@@ -48,6 +48,9 @@ describe("rendering", () => {
     expect("cardBackground" in data).toBe(false);
     expect(data.status).toBe("CURRENT");
     expect(data.characterClass).toBe("Precog");
+    expect(data.hp).toBe("7 / 7");
+    expect(data.stamina).toBe("5 / 5");
+    expect(data.resolve).toBe("5 / 5");
     expect("isStale" in data).toBe(false);
     expect(data.conditionsDisplay).toBe("None");
     expect(data.weaponAmmo).toBe("Unavailable");

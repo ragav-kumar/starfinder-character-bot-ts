@@ -128,7 +128,15 @@ let fontDefinitionsPromise: Promise<FontDefinition[]> | undefined;
 
 function snapshotValue(snapshot: CharacterSnapshot, key: SnapshotField): string {
   const value = String(snapshot[key]).trim();
-  return value || UNAVAILABLE;
+  if (!value) {
+    return UNAVAILABLE;
+  }
+
+  if (key === "hp" || key === "stamina" || key === "resolve") {
+    return value.replace(/\s*\/\s*/g, " / ");
+  }
+
+  return value;
 }
 
 export function formatTimestamp(date: Date): string {
