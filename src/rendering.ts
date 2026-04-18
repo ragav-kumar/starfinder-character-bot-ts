@@ -152,11 +152,11 @@ async function loadCharacterCardTemplate(): Promise<string> {
 
 async function loadFontDefinitions(): Promise<FontDefinition[]> {
   fontDefinitionsPromise ??= Promise.all([
-    readFile(require.resolve("@fontsource/inter/files/inter-latin-400-normal.woff")),
-    readFile(require.resolve("@fontsource/inter/files/inter-latin-700-normal.woff")),
+    readFile(require.resolve("@fontsource/orbitron/files/orbitron-latin-400-normal.woff")),
+    readFile(require.resolve("@fontsource/orbitron/files/orbitron-latin-700-normal.woff")),
   ]).then(([regular, bold]) => [
-    { name: "Inter", data: regular, weight: 400, style: "normal" as const },
-    { name: "Inter", data: bold, weight: 700, style: "normal" as const },
+    { name: "Orbitron", data: regular, weight: 400, style: "normal" as const },
+    { name: "Orbitron", data: bold, weight: 700, style: "normal" as const },
   ]);
 
   return fontDefinitionsPromise;

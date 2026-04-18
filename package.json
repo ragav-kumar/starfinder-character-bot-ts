@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
+    "@fontsource/orbitron": "^5.2.8",
     "@resvg/resvg-js": "^2.6.2",
     "discord.js": "^14.19.3",
     "dotenv": "^17.4.2",

@@ -6,50 +6,66 @@
     flex-direction: column;
     box-sizing: border-box;
     padding: 18px;
-    background: #f3ecd8;
-    color: #f8f2df;
-    font-family: Inter;
+    background: #d6e1eb;
+    color: #edf6ff;
+    font-family: Orbitron;
+    letter-spacing: 0.02em;
     overflow: hidden;
   "
 >
+  <!-- Header-->
   <div
     style="
       display: flex;
       flex-direction: column;
       gap: 10px;
       padding: 18px 20px;
-      border-radius: 18px;
-      background: #294c3b;
-      color: #f8f2df;
+      border: 2px solid #89b0d4;
+      border-radius: 6px;
+      background: #284761;
+      color: #edf6ff;
+      box-shadow: inset 0 0 0 1px #1b3144;
     "
   >
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
-      <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1;">
-        <div id="displayName" style="font-size: 28px; font-weight: 700; line-height: 1.1; word-break: break-word;">Navasi</div>
-        <div style="display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; font-size: 14px; opacity: 0.92;">
-          <span>Character</span>
-          <span id="characterId">110</span>
+    <div
+      style="
+        display: grid;
+        grid-template-columns: 1fr auto;
+        justify-content: space-between;
+        align-items: center;
+      "
+    >
+      <div
+          id="displayName"
+          style="
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            word-break: break-word;
+          "
+        >
+          Navasi
         </div>
-      </div>
       <div
         id="status"
         style="
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-width: 102px;
-          padding: 8px 12px;
+          width: 55px;
+          text-align: center;
+          font-size: 8px;
+          font-weight: 900;
+          padding-top: 4px;
+          padding-bottom: 4px;
           border-radius: 999px;
-          background: #d5eadc;
-          color: #1d4b36;
-          font-size: 13px;
-          font-weight: 700;
+          background: #d8e7f5;
+          border: 2px solid #8fb7d8;
+          color: #18374e;
         "
       >
         CURRENT
       </div>
     </div>
-    <div style="font-size: 13px; opacity: 0.92; word-break: break-word;">Snapshot is current.</div>
   </div>
 
   <div
@@ -60,46 +76,267 @@
       gap: 14px;
       margin-top: 14px;
       padding: 18px;
-      border: 3px solid #85b199;
-      border-radius: 18px;
-      background: #1f1d17;
+      border: 3px solid #86abc9;
+      border-radius: 6px;
+      background: #24313d;
+      box-shadow: inset 0 0 0 1px #4d708f;
     "
   >
-    <div style="display: flex; gap: 12px;">
-      <div style="display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; background: #273229;">
-        <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Initiative</div>
-        <div id="initiative" style="font-size: 24px; font-weight: 700;">+4</div>
+    <div
+      style="
+        display: flex;
+        gap: 12px;
+      "
+    >
+      <div
+        style="
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          gap: 6px;
+          padding: 12px;
+          border: 1px solid #557893;
+          border-radius: 4px;
+          background: #314250;
+        "
+      >
+        <div
+          style="
+            font-size: 12px;
+            font-weight: 700;
+            color: #a2c3df;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+          "
+        >
+          Initiative
+        </div>
+        <div
+          id="initiative"
+          style="
+            font-size: 24px;
+            font-weight: 700;
+          "
+        >
+          +4
+        </div>
       </div>
-      <div style="display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; background: #273229;">
-        <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Attack</div>
-        <div id="attack" style="font-size: 24px; font-weight: 700; word-break: break-word;">+6</div>
+      <div
+        style="
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          gap: 6px;
+          padding: 12px;
+          border: 1px solid #557893;
+          border-radius: 4px;
+          background: #314250;
+        "
+      >
+        <div
+          style="
+            font-size: 12px;
+            font-weight: 700;
+            color: #a2c3df;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+          "
+        >
+          Attack
+        </div>
+        <div
+          id="attack"
+          style="
+            font-size: 24px;
+            font-weight: 700;
+            word-break: break-word;
+          "
+        >
+          +6
+        </div>
       </div>
     </div>
 
-    <div style="display: flex; gap: 10px;">
-      <div style="display: flex; flex: 1; flex-direction: column; gap: 4px; padding: 12px; border-radius: 14px; background: #273229;">
-        <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">HP</div>
-        <div id="hp" style="font-size: 22px; font-weight: 700;">18/18</div>
+    <div
+      style="
+        display: flex;
+        gap: 10px;
+      "
+    >
+      <div
+        style="
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          gap: 4px;
+          padding: 12px;
+          border: 1px solid #557893;
+          border-radius: 4px;
+          background: #314250;
+        "
+      >
+        <div
+          style="
+            font-size: 12px;
+            font-weight: 700;
+            color: #a2c3df;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+          "
+        >
+          HP
+        </div>
+        <div
+          id="hp"
+          style="
+            font-size: 22px;
+            font-weight: 700;
+          "
+        >
+          18/18
+        </div>
       </div>
-      <div style="display: flex; flex: 1; flex-direction: column; gap: 4px; padding: 12px; border-radius: 14px; background: #273229;">
-        <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">SP</div>
-        <div id="stamina" style="font-size: 22px; font-weight: 700;">12/12</div>
+      <div
+        style="
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          gap: 4px;
+          padding: 12px;
+          border: 1px solid #557893;
+          border-radius: 4px;
+          background: #314250;
+        "
+      >
+        <div
+          style="
+            font-size: 12px;
+            font-weight: 700;
+            color: #a2c3df;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+          "
+        >
+          SP
+        </div>
+        <div
+          id="stamina"
+          style="
+            font-size: 22px;
+            font-weight: 700;
+          "
+        >
+          12/12
+        </div>
       </div>
-      <div style="display: flex; flex: 1; flex-direction: column; gap: 4px; padding: 12px; border-radius: 14px; background: #273229;">
-        <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">RP</div>
-        <div id="resolve" style="font-size: 22px; font-weight: 700;">4/4</div>
+      <div
+        style="
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          gap: 4px;
+          padding: 12px;
+          border: 1px solid #557893;
+          border-radius: 4px;
+          background: #314250;
+        "
+      >
+        <div
+          style="
+            font-size: 12px;
+            font-weight: 700;
+            color: #a2c3df;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+          "
+        >
+          RP
+        </div>
+        <div
+          id="resolve"
+          style="
+            font-size: 22px;
+            font-weight: 700;
+          "
+        >
+          4/4
+        </div>
       </div>
     </div>
 
-    <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: #273229;">
-      <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Conditions</div>
-      <div id="conditionsDisplay" style="font-size: 17px; font-weight: 600; word-break: break-word;">Off-kilter</div>
+    <div
+      style="
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 14px;
+        border: 1px solid #557893;
+        border-radius: 4px;
+        background: #314250;
+      "
+    >
+      <div
+        style="
+          font-size: 12px;
+          font-weight: 700;
+          color: #a2c3df;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        "
+      >
+        Conditions
+      </div>
+      <div
+        id="conditionsDisplay"
+        style="
+          font-size: 17px;
+          font-weight: 600;
+          word-break: break-word;
+        "
+      >
+        Off-kilter
+      </div>
     </div>
 
-    <div style="display: flex; gap: 10px;">
-      <div style="display: flex; flex: 1; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: #273229;">
-        <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Armor</div>
-        <div style="display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; font-size: 17px; font-weight: 600;">
+    <div
+      style="
+        display: flex;
+        gap: 10px;
+      "
+    >
+      <div
+        style="
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          gap: 8px;
+          padding: 14px;
+          border: 1px solid #557893;
+          border-radius: 4px;
+          background: #314250;
+        "
+      >
+        <div
+          style="
+            font-size: 12px;
+            font-weight: 700;
+            color: #a2c3df;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+          "
+        >
+          Armor
+        </div>
+        <div
+          style="
+            display: flex;
+            gap: 4px;
+            align-items: baseline;
+            flex-wrap: wrap;
+            font-size: 17px;
+            font-weight: 600;
+          "
+        >
           <span>EAC</span>
           <span id="eac">15</span>
           <span>/</span>
@@ -107,9 +344,40 @@
           <span id="kac">16</span>
         </div>
       </div>
-      <div style="display: flex; flex: 1; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: #273229;">
-        <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Saves</div>
-        <div style="display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; font-size: 15px; font-weight: 600; line-height: 1.35;">
+      <div
+        style="
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          gap: 8px;
+          padding: 14px;
+          border: 1px solid #557893;
+          border-radius: 4px;
+          background: #314250;
+        "
+      >
+        <div
+          style="
+            font-size: 12px;
+            font-weight: 700;
+            color: #a2c3df;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+          "
+        >
+          Saves
+        </div>
+        <div
+          style="
+            display: flex;
+            gap: 4px;
+            align-items: baseline;
+            flex-wrap: wrap;
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.35;
+          "
+        >
           <span>Fort</span>
           <span id="fort">+4</span>
           <span>|</span>
@@ -122,10 +390,49 @@
       </div>
     </div>
 
-    <div style="display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: #273229;">
-      <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Weapon</div>
-      <div id="weaponName" style="font-size: 20px; font-weight: 700; word-break: break-word;">Tactical Semi-Auto Pistol</div>
-      <div style="display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; font-size: 15px; line-height: 1.4; word-break: break-word;">
+    <div
+      style="
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 14px;
+        border: 1px solid #557893;
+        border-radius: 4px;
+        background: #314250;
+      "
+    >
+      <div
+        style="
+          font-size: 12px;
+          font-weight: 700;
+          color: #a2c3df;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        "
+      >
+        Weapon
+      </div>
+      <div
+        id="weaponName"
+        style="
+          font-size: 20px;
+          font-weight: 700;
+          word-break: break-word;
+        "
+      >
+        Tactical Semi-Auto Pistol
+      </div>
+      <div
+        style="
+          display: flex;
+          gap: 4px;
+          align-items: baseline;
+          flex-wrap: wrap;
+          font-size: 15px;
+          line-height: 1.4;
+          word-break: break-word;
+        "
+      >
         <span>Damage</span>
         <span id="damageSummary">1d6 P</span>
       </div>
@@ -133,7 +440,17 @@
         <span id="weaponDamage">1d6</span>
         <span id="weaponDamageType">P</span>
       </div>
-      <div style="display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; font-size: 15px; line-height: 1.4; word-break: break-word;">
+      <div
+        style="
+          display: flex;
+          gap: 4px;
+          align-items: baseline;
+          flex-wrap: wrap;
+          font-size: 15px;
+          line-height: 1.4;
+          word-break: break-word;
+        "
+      >
         <span>Range</span>
         <span id="weaponRange">30 ft</span>
         <span>|</span>
@@ -142,7 +459,17 @@
       </div>
     </div>
 
-    <div style="display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; margin-top: auto; font-size: 12px; color: #d0c5af;">
+    <div
+      style="
+        display: flex;
+        gap: 4px;
+        align-items: baseline;
+        flex-wrap: wrap;
+        margin-top: auto;
+        font-size: 12px;
+        color: #adc0d3;
+      "
+    >
       <span>Last updated</span>
       <span id="lastUpdated">2026-04-07 21:15 UTC</span>
     </div>
