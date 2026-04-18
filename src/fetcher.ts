@@ -33,6 +33,7 @@ function normalizeText(value: string): string {
     .replaceAll("&#39;", "'")
     .replaceAll("&lt;", "<")
     .replaceAll("&gt;", ">")
+    .replaceAll("&ndash;", "-")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -43,6 +44,31 @@ function extractInputValue(html: string, inputName: string): string | null {
     return null;
   }
   return normalizeText(match[1]) || null;
+}
+
+function extractSelectedValue(html: string, selectName: string): string | null {
+  const selectMatch = new RegExp(
+    `<select[^>]*name="${escapeRegExp(selectName)}"[^>]*>([\\s\\S]*?)<\\/select>`,
+    "i",
+  ).exec(html);
+  if (!selectMatch) {
+    return null;
+  }
+
+  const optionPattern = /<option\b([^>]*)>([\s\S]*?)<\/option>/gi;
+  for (const optionMatch of selectMatch[1].matchAll(optionPattern)) {
+    const attributes = optionMatch[1] ?? "";
+    if (!/\bselected(?:\s*=\s*(?:"selected"|'selected'|selected))?\b/i.test(attributes)) {
+      continue;
+    }
+
+    const valueMatch = /value="([^"]*)"/i.exec(attributes);
+    const preferredValue = normalizeText(valueMatch?.[1] ?? "");
+    const fallbackValue = normalizeText(optionMatch[2] ?? "");
+    return preferredValue || fallbackValue || null;
+  }
+
+  return null;
 }
 
 function extractRowNumbers(html: string, inputName: string): string[] {
@@ -108,77 +134,18 @@ function extractRowTotal(html: string, inputName: string, signed: boolean): stri
   return signed ? formatSigned(values[0]) : values[0];
 }
 
-function formatConditionLabel(condition: string): string {
-  const normalized = normalizeText(condition)
-    .toLowerCase()
-    .replaceAll("_", "-")
-    .replaceAll(" ", "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-
-  if (!normalized) {
-    return "";
-  }
-
-  if (normalized === "off-kilter") {
-    return "Off-kilter";
-  }
-  if (normalized === "flat-footed") {
-    return "Flat-footed";
-  }
-
-  return normalized
-    .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 function extractConditions(html: string): string {
-  const labels = new Set<string>();
-  for (const match of html.matchAll(/<input[^>]*>/gi)) {
-    const inputTag = match[0];
-    if (!/checked/i.test(inputTag)) {
-      continue;
-    }
+  const state = extractSelectedValue(html, "character_state") ?? "";
+  const additional = extractInputValue(html, "additionalmod") ?? "";
 
-    const nameMatch =
-      /name="((?:condition|conditions|modifier|modifiers|state)_[^"]+)"/i.exec(inputTag) ??
-      /value="([^"]+)"/i.exec(inputTag);
-
-    if (!nameMatch) {
-      continue;
-    }
-
-    const rawCondition = nameMatch[1].replace(/^(?:condition|conditions|modifier|modifiers|state)_/i, "");
-    const label = formatConditionLabel(rawCondition);
-    if (label) {
-      labels.add(label);
-    }
-  }
-
-  return labels.size > 0 ? [...labels].sort().join(", ") : UNAVAILABLE;
+  return [state, additional].filter(Boolean).join(", ");
 }
 
-function extractAttackBonus(html: string): string {
-  let bestTotal: number | null = null;
-  for (const inputName of ["melee_attack_miscmod", "ranged_attack_miscmod", "thrown_attack_miscmod"]) {
-    const values = extractRowNumbers(html, inputName);
-    if (values.length === 0) {
-      continue;
-    }
+function extractCharacterClass(html: string): string {
+  const classOne = extractInputValue(html, "character_class1") ?? "";
+  const classTwo = extractInputValue(html, "character_class2") ?? "";
 
-    const total = Number.parseInt(values[values.length - 1]!, 10);
-    bestTotal = bestTotal === null ? total : Math.max(bestTotal, total);
-  }
-
-  if (bestTotal === null) {
-    const baseAttack = extractInputValue(html, "base_attack_bonus");
-    if (baseAttack && /^-?\d+$/.test(baseAttack)) {
-      bestTotal = Number.parseInt(baseAttack, 10);
-    }
-  }
-
-  return bestTotal === null ? UNAVAILABLE : formatSigned(String(bestTotal));
+  return [classOne, classTwo].filter(Boolean).join(" / ");
 }
 
 function formatRange(value: string): string {
@@ -193,32 +160,84 @@ function formatRange(value: string): string {
   return cleaned;
 }
 
+function extractTableRows(html: string): string[] {
+  return [...html.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/gi)].map((match) => match[0]);
+}
+
+function extractCells(rowHtml: string): string[] {
+  return [...rowHtml.matchAll(/<td\b[^>]*>[\s\S]*?<\/td>/gi)].map((match) => match[0]);
+}
+
+function extractWeaponName(cellHtml: string): string {
+  const cleaned = normalizeText(cellHtml).replace(/^\[\s*(?:Un-Equip|Equip)\s*\]\s*/i, "");
+  return cleaned.replace(/\s*\([^)]*\)\s*$/, "").trim();
+}
+
+function extractWeaponAction(cellHtml: string): string {
+  const match = />(Un-Equip|Equip)<\/a>/i.exec(cellHtml) ?? /\[(Un-Equip|Equip)\]/i.exec(normalizeText(cellHtml));
+  return normalizeText(match?.[1] ?? "");
+}
+
 function extractEquippedWeapon(html: string): Pick<
   CharacterSnapshot,
-  "weaponName" | "weaponDamage" | "weaponDamageType" | "weaponRange" | "weaponAmmo"
+  | "weaponName"
+  | "weaponLevel"
+  | "weaponAttack"
+  | "weaponDamage"
+  | "weaponCritical"
+  | "weaponRange"
+  | "weaponDamageType"
+  | "weaponAmmo"
+  | "weaponSpecial"
 > {
   const fallback = {
     weaponName: UNAVAILABLE,
+    weaponLevel: UNAVAILABLE,
+    weaponAttack: UNAVAILABLE,
     weaponDamage: UNAVAILABLE,
+    weaponCritical: UNAVAILABLE,
     weaponDamageType: UNAVAILABLE,
     weaponRange: UNAVAILABLE,
     weaponAmmo: UNAVAILABLE,
+    weaponSpecial: UNAVAILABLE,
   };
 
-  const pattern =
-    /\[(?:<a [^>]*>)?(?:Un-Equip|Equip)(?:<\/a>)?\]<\/font>\s*(?<name>[^<(]+?)(?:\s*\([^<]*\))?<\/td>.*?<td[^>]*><font[^>]*>(?<damage>[^<]*)<\/font><\/td>.*?<\/tr>\s*<tr>\s*<td[^>]*><font[^>]*>(?<damageType>[^<]*)<\/font><\/td>\s*<td[^>]*>(?<range>[^<]*)<\/td>\s*<td[^>]*>[^<]*<\/td>\s*<td[^>]*><font[^>]*>(?<ammo>[^<]*)<\/font><\/td>/is;
-  const match = pattern.exec(html);
-  if (!match?.groups) {
-    return fallback;
+  const rows = extractTableRows(html);
+  for (let index = 0; index < rows.length - 1; index += 1) {
+    const firstRowCells = extractCells(rows[index]!);
+    if (firstRowCells.length < 4) {
+      continue;
+    }
+
+    const action = extractWeaponAction(firstRowCells[0]!);
+    if (action !== "Un-Equip") {
+      continue;
+    }
+
+    const weaponName = extractWeaponName(firstRowCells[0]!);
+    if (!weaponName) {
+      continue;
+    }
+
+    const secondRowCells = extractCells(rows[index + 1]!);
+    if (secondRowCells.length < 5) {
+      continue;
+    }
+
+    return {
+      weaponName,
+      weaponLevel: normalizeText(firstRowCells[1]!) || UNAVAILABLE,
+      weaponAttack: formatSigned(normalizeText(firstRowCells[2]!) || null),
+      weaponDamage: normalizeText(firstRowCells[3]!) || UNAVAILABLE,
+      weaponCritical: normalizeText(secondRowCells[0]!) || UNAVAILABLE,
+      weaponRange: formatRange(secondRowCells[1]!),
+      weaponDamageType: normalizeText(secondRowCells[2]!) || UNAVAILABLE,
+      weaponAmmo: normalizeText(secondRowCells[3]!) || UNAVAILABLE,
+      weaponSpecial: normalizeText(secondRowCells[4]!) || UNAVAILABLE,
+    };
   }
 
-  return {
-    weaponName: normalizeText(match.groups.name) || UNAVAILABLE,
-    weaponDamage: normalizeText(match.groups.damage) || UNAVAILABLE,
-    weaponDamageType: normalizeText(match.groups.damageType) || UNAVAILABLE,
-    weaponRange: formatRange(match.groups.range),
-    weaponAmmo: normalizeText(match.groups.ammo) || UNAVAILABLE,
-  };
+  return fallback;
 }
 
 export function scrapeCharacterSheet(
@@ -233,6 +252,7 @@ export function scrapeCharacterSheet(
 
   const snapshot: CharacterSnapshot = {
     name: extractTitleName(html, fallbackName),
+    characterClass: extractCharacterClass(html),
     initiative: extractRowTotal(html, "initiative_miscmod", true),
     hp: formatPool(extractInputValue(html, "hp_current"), extractInputValue(html, "hp_total")),
     stamina: formatPool(extractInputValue(html, "stamina_current"), extractInputValue(html, "stamina_total")),
@@ -243,12 +263,15 @@ export function scrapeCharacterSheet(
     fort: extractRowTotal(html, "saves_fortitude_basesave", true),
     ref: extractRowTotal(html, "saves_reflex_basesave", true),
     will: extractRowTotal(html, "saves_will_basesave", true),
-    attack: extractAttackBonus(html),
     weaponName: UNAVAILABLE,
+    weaponLevel: UNAVAILABLE,
+    weaponAttack: UNAVAILABLE,
     weaponDamage: UNAVAILABLE,
+    weaponCritical: UNAVAILABLE,
     weaponDamageType: UNAVAILABLE,
     weaponRange: UNAVAILABLE,
     weaponAmmo: UNAVAILABLE,
+    weaponSpecial: UNAVAILABLE,
     lastUpdatedAt: options.now ?? new Date(),
   };
 

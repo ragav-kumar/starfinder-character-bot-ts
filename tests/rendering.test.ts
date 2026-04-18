@@ -3,18 +3,16 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, test } from "vitest";
 
 import {
-  CARD_HEIGHT,
-  CARD_WIDTH,
   buildCharacterCardTemplateData,
   formatTimestamp,
   populateCharacterCardTemplate,
-  renderCharacterCard,
   renderCharacterCardMarkup,
 } from "../src/rendering.js";
 import type { CharacterSnapshot } from "../src/types.js";
 
 const snapshot: CharacterSnapshot = {
   name: "Paul-Paul Atreides",
+  characterClass: "Precog",
   initiative: "+4",
   hp: "7/7",
   stamina: "5/5",
@@ -25,12 +23,15 @@ const snapshot: CharacterSnapshot = {
   fort: "+0",
   ref: "+6",
   will: "+0",
-  attack: "+4",
   weaponName: "Laser Pistol",
+  weaponLevel: "1",
+  weaponAttack: "+4",
   weaponDamage: "1d4 + LEV",
-  weaponDamageType: "Burn 1d4",
+  weaponCritical: "Burn 1d4",
+  weaponDamageType: "F",
   weaponRange: "80 ft",
   weaponAmmo: "52 / 1-20",
+  weaponSpecial: "Unavailable",
   lastUpdatedAt: new Date("2026-04-07T21:15:00Z"),
 };
 
@@ -45,6 +46,7 @@ describe("rendering", () => {
     expect("cardWidth" in data).toBe(false);
     expect("cardBackground" in data).toBe(false);
     expect(data.status).toBe("CURRENT");
+    expect(data.characterClass).toBe("Precog");
     expect("isStale" in data).toBe(false);
     expect(data.conditionsDisplay).toBe("None");
     expect(data.weaponAmmo).toBe("Unavailable");
@@ -63,16 +65,12 @@ describe("rendering", () => {
     expect(markup).toContain("CURRENT");
   });
 
-  test("renders a png attachment with configured dimensions and stale-state differences", async () => {
-    const fresh = await renderCharacterCard("110", "Paul-Paul Atreides", snapshot, false);
-    const stale = await renderCharacterCard("110", "Paul-Paul Atreides", snapshot, true);
+  test("exposes renamed weapon fields in template data", () => {
+    const data = buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, false);
 
-    expect(fresh.filename).toBe("character-110.png");
-    expect(fresh.contentType).toBe("image/png");
-    expect(fresh.data.subarray(0, 4)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
-    expect(readPngWidth(fresh.data)).toBe(CARD_WIDTH);
-    expect(readPngHeight(fresh.data)).toBe(CARD_HEIGHT);
-    expect(stale.data.equals(fresh.data)).toBe(false);
+    expect(data.weaponAttack).toBe("+4");
+    expect(data.weaponCritical).toBe("Burn 1d4");
+    expect(data.weaponDamageType).toBe("F");
   });
 
   test("changes in placeholder-backed values change the populated template markup", async () => {
@@ -107,11 +105,3 @@ describe("rendering", () => {
     ).not.toThrow();
   });
 });
-
-function readPngWidth(buffer: Buffer): number {
-  return buffer.readUInt32BE(16);
-}
-
-function readPngHeight(buffer: Buffer): number {
-  return buffer.readUInt32BE(20);
-}

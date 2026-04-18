@@ -2,6 +2,7 @@ export const UNAVAILABLE = "Unavailable";
 
 export type SnapshotField =
   | "name"
+  | "characterClass"
   | "initiative"
   | "hp"
   | "stamina"
@@ -12,15 +13,19 @@ export type SnapshotField =
   | "fort"
   | "ref"
   | "will"
-  | "attack"
   | "weaponName"
+  | "weaponLevel"
+  | "weaponAttack"
   | "weaponDamage"
+  | "weaponCritical"
   | "weaponDamageType"
   | "weaponRange"
-  | "weaponAmmo";
+  | "weaponAmmo"
+  | "weaponSpecial";
 
 export interface CharacterSnapshot {
   name: string;
+  characterClass: string;
   initiative: string;
   hp: string;
   stamina: string;
@@ -31,12 +36,15 @@ export interface CharacterSnapshot {
   fort: string;
   ref: string;
   will: string;
-  attack: string;
   weaponName: string;
+  weaponLevel: string;
+  weaponAttack: string;
   weaponDamage: string;
+  weaponCritical: string;
   weaponDamageType: string;
   weaponRange: string;
   weaponAmmo: string;
+  weaponSpecial: string;
   lastUpdatedAt: Date;
 }
 

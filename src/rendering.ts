@@ -11,6 +11,7 @@ const require = createRequire(import.meta.url);
 
 const DISPLAYED_FIELDS: Array<{ key: SnapshotField; label: string }> = [
   { key: "name", label: "Name" },
+  { key: "characterClass", label: "Class" },
   { key: "initiative", label: "Initiative" },
   { key: "hp", label: "HP" },
   { key: "stamina", label: "SP" },
@@ -21,12 +22,15 @@ const DISPLAYED_FIELDS: Array<{ key: SnapshotField; label: string }> = [
   { key: "fort", label: "Fort" },
   { key: "ref", label: "Ref" },
   { key: "will", label: "Will" },
-  { key: "attack", label: "Attack" },
   { key: "weaponName", label: "Weapon" },
+  { key: "weaponLevel", label: "Weapon level" },
+  { key: "weaponAttack", label: "Weapon attack" },
   { key: "weaponDamage", label: "Damage" },
+  { key: "weaponCritical", label: "Critical" },
   { key: "weaponDamageType", label: "Damage type" },
   { key: "weaponRange", label: "Range" },
   { key: "weaponAmmo", label: "Ammo" },
+  { key: "weaponSpecial", label: "Weapon special" },
 ];
 
 export const CARD_WIDTH = 450;
@@ -44,6 +48,7 @@ const CHARACTER_CARD_TEMPLATE_KEYS = [
   "characterId",
   "status",
   "lastUpdated",
+  "characterClass",
   "initiative",
   "hp",
   "stamina",
@@ -54,12 +59,15 @@ const CHARACTER_CARD_TEMPLATE_KEYS = [
   "fort",
   "ref",
   "will",
-  "attack",
   "weaponName",
+  "weaponLevel",
+  "weaponAttack",
   "weaponRange",
   "weaponAmmo",
   "weaponDamage",
+  "weaponCritical",
   "weaponDamageType",
+  "weaponSpecial",
   "damageSummary",
 ] as const satisfies ReadonlyArray<keyof CharacterCardTemplateData>;
 
@@ -71,13 +79,14 @@ const CHARACTER_CARD_TEMPLATE_KEYS = [
  * - `characterId`: numeric Starfinder character id
  * - `status`: short status text (`CURRENT` or `STALE`)
  * - `lastUpdated`: UTC timestamp formatted for display
+ * - `characterClass`: combined class string from the sheet header
  *
  * Snapshot-backed values:
  * - `initiative`, `hp`, `stamina`, `resolve`
  * - `conditionsDisplay`: user-facing conditions text; falls back to `None` when conditions are unavailable
  * - `eac`, `kac`, `fort`, `ref`, `will`
- * - `attack`, `weaponName`, `weaponRange`, `weaponAmmo`
- * - `weaponDamage`, `weaponDamageType`
+ * - `weaponName`, `weaponLevel`, `weaponAttack`, `weaponRange`, `weaponAmmo`
+ * - `weaponDamage`, `weaponCritical`, `weaponDamageType`, `weaponSpecial`
  * - `damageSummary`: preformatted `${weaponDamage} ${weaponDamageType}` string
  *
  * Fallback semantics:
@@ -91,6 +100,7 @@ export interface CharacterCardTemplateData {
   characterId: string;
   status: "CURRENT" | "STALE";
   lastUpdated: string;
+  characterClass: string;
   initiative: string;
   hp: string;
   stamina: string;
@@ -101,12 +111,15 @@ export interface CharacterCardTemplateData {
   fort: string;
   ref: string;
   will: string;
-  attack: string;
   weaponName: string;
+  weaponLevel: string;
+  weaponAttack: string;
   weaponRange: string;
   weaponAmmo: string;
   weaponDamage: string;
+  weaponCritical: string;
   weaponDamageType: string;
+  weaponSpecial: string;
   damageSummary: string;
 }
 
@@ -176,6 +189,7 @@ export function buildCharacterCardTemplateData(
     characterId,
     status: stale ? "STALE" : "CURRENT",
     lastUpdated: formatTimestamp(snapshot.lastUpdatedAt),
+    characterClass: snapshotValue(snapshot, "characterClass"),
     initiative: snapshotValue(snapshot, "initiative"),
     hp: snapshotValue(snapshot, "hp"),
     stamina: snapshotValue(snapshot, "stamina"),
@@ -186,12 +200,15 @@ export function buildCharacterCardTemplateData(
     fort: snapshotValue(snapshot, "fort"),
     ref: snapshotValue(snapshot, "ref"),
     will: snapshotValue(snapshot, "will"),
-    attack: snapshotValue(snapshot, "attack"),
     weaponName: snapshotValue(snapshot, "weaponName"),
+    weaponLevel: snapshotValue(snapshot, "weaponLevel"),
+    weaponAttack: snapshotValue(snapshot, "weaponAttack"),
     weaponRange: snapshotValue(snapshot, "weaponRange"),
     weaponAmmo: snapshotValue(snapshot, "weaponAmmo"),
     weaponDamage,
+    weaponCritical: snapshotValue(snapshot, "weaponCritical"),
     weaponDamageType,
+    weaponSpecial: snapshotValue(snapshot, "weaponSpecial"),
     damageSummary: `${weaponDamage} ${weaponDamageType}`.trim(),
   };
 }
