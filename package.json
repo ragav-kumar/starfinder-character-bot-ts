@@ -4,18 +4,25 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "lint": "eslint .",
+    "prebuild": "npm audit && npm run lint",
     "build": "tsc -p tsconfig.json",
+    "prestart": "npm audit && npm run lint",
     "start": "tsx src/index.ts",
     "test": "vitest run"
   },
   "dependencies": {
     "discord.js": "^14.19.3",
-    "dotenv": "^16.6.1"
+    "dotenv": "^17.4.2"
   },
   "devDependencies": {
-    "@types/node": "^24.6.0",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^25.6.0",
+    "eslint": "^10.2.1",
+    "globals": "^17.5.0",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.58.2",
+    "vitest": "^4.1.4"
   }
 }

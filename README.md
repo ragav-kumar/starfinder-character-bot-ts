@@ -20,6 +20,12 @@ include `configChannelId` and `dashboardChannelId`.
 
 ```bash
 npm install
+npm run lint
+npm run build
 npm test
 npm start
 ```
+
+`npm run build` and `npm start` both run `npm audit` and `npm run lint` first
+through their npm lifecycle hooks, so dependency vulnerabilities and lint issues
+are checked automatically before compiling or starting the bot.

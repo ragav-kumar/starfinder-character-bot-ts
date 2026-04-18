@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
+import type { Mock } from "vitest";
 
 import { CharacterBotService } from "../src/service.js";
 import { GuildStateStore } from "../src/state.js";
@@ -82,30 +83,9 @@ const config: RuntimeConfig = {
   },
 };
 
-const baseSnapshot = {
-  name: "Character 110",
-  initiative: "+0",
-  hp: "1/1",
-  stamina: "1/1",
-  resolve: "1/1",
-  conditions: "Unavailable",
-  eac: "10",
-  kac: "10",
-  fort: "+0",
-  ref: "+0",
-  will: "+0",
-  attack: "+0",
-  weaponName: "Unavailable",
-  weaponDamage: "Unavailable",
-  weaponDamageType: "Unavailable",
-  weaponRange: "Unavailable",
-  weaponAmmo: "Unavailable",
-  lastUpdatedAt: new Date("2026-04-07T21:15:00Z"),
-};
-
 describe("CharacterBotService", () => {
   let stateStore: GuildStateStore;
-  let fetchPage: ReturnType<typeof vi.fn>;
+  let fetchPage: Mock<(url: string) => Promise<string>>;
   let channelContents: string[];
   let service: CharacterBotService;
 

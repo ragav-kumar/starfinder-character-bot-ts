@@ -24,7 +24,9 @@ function parseGuildChannelConfig(raw: string): Record<string, GuildChannels> {
   try {
     parsed = JSON.parse(raw);
   } catch (error) {
-    throw new Error(`GUILD_CHANNEL_CONFIG must be valid JSON: ${String(error)}`);
+    throw new Error(`GUILD_CHANNEL_CONFIG must be valid JSON: ${String(error)}`, {
+      cause: error,
+    });
   }
 
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {

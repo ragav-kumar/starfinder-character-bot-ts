@@ -4,10 +4,6 @@ export default defineConfig({
   test: {
     include: ["tests/**/*.test.ts"],
     pool: "threads",
-    poolOptions: {
-      threads: {
-        singleThread: true,
-      },
-    },
+    singleThread: true,
   },
 });
