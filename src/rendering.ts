@@ -79,7 +79,6 @@ const CHARACTER_CARD_TEMPLATE_KEYS = [
   "weaponCritical",
   "weaponDamageType",
   "weaponSpecial",
-  "damageSummary",
 ] as const satisfies ReadonlyArray<keyof CharacterCardTemplateData>;
 
 /**
@@ -98,7 +97,6 @@ const CHARACTER_CARD_TEMPLATE_KEYS = [
  * - `eac`, `kac`, `fort`, `ref`, `will`
  * - `weaponName`, `weaponLevel`, `weaponAttack`, `weaponRange`, `weaponAmmo`
  * - `weaponDamage`, `weaponCritical`, `weaponDamageType`, `weaponSpecial`
- * - `damageSummary`: preformatted `${weaponDamage} ${weaponDamageType}` string
  *
  * Fallback semantics:
  * - All snapshot-backed values except `conditionsDisplay` fall back to `Unavailable`
@@ -131,8 +129,18 @@ export interface CharacterCardTemplateData {
   weaponCritical: string;
   weaponDamageType: string;
   weaponSpecial: string;
-  damageSummary: string;
 }
+
+const WEAPON_DISPLAY_FIELDS = new Set<SnapshotField>([
+  "weaponLevel",
+  "weaponAttack",
+  "weaponDamage",
+  "weaponCritical",
+  "weaponDamageType",
+  "weaponRange",
+  "weaponAmmo",
+  "weaponSpecial",
+]);
 
 let templatePromise: Promise<string> | undefined;
 let fontDefinitionsPromise: Promise<FontDefinition[]> | undefined;
@@ -148,6 +156,15 @@ function snapshotValue(snapshot: CharacterSnapshot, key: SnapshotField): string 
   }
 
   return value;
+}
+
+function weaponDisplayValue(snapshot: CharacterSnapshot, key: SnapshotField): string {
+  const value = snapshotValue(snapshot, key);
+  if (!WEAPON_DISPLAY_FIELDS.has(key)) {
+    return value;
+  }
+
+  return value === UNAVAILABLE ? "-" : value;
 }
 
 export function formatTimestamp(date: Date): string {
@@ -200,8 +217,8 @@ export function buildCharacterCardTemplateData(
   snapshot: CharacterSnapshot,
   stale: boolean,
 ): CharacterCardTemplateData {
-  const weaponDamage = snapshotValue(snapshot, "weaponDamage");
-  const weaponDamageType = snapshotValue(snapshot, "weaponDamageType");
+  const weaponDamage = weaponDisplayValue(snapshot, "weaponDamage");
+  const weaponDamageType = weaponDisplayValue(snapshot, "weaponDamageType");
 
   return {
     displayName: displayName.trim() || `Character ${characterId}`,
@@ -220,15 +237,14 @@ export function buildCharacterCardTemplateData(
     ref: snapshotValue(snapshot, "ref"),
     will: snapshotValue(snapshot, "will"),
     weaponName: snapshotValue(snapshot, "weaponName"),
-    weaponLevel: snapshotValue(snapshot, "weaponLevel"),
-    weaponAttack: snapshotValue(snapshot, "weaponAttack"),
-    weaponRange: snapshotValue(snapshot, "weaponRange"),
-    weaponAmmo: snapshotValue(snapshot, "weaponAmmo"),
+    weaponLevel: weaponDisplayValue(snapshot, "weaponLevel"),
+    weaponAttack: weaponDisplayValue(snapshot, "weaponAttack"),
+    weaponRange: weaponDisplayValue(snapshot, "weaponRange"),
+    weaponAmmo: weaponDisplayValue(snapshot, "weaponAmmo"),
     weaponDamage,
-    weaponCritical: snapshotValue(snapshot, "weaponCritical"),
+    weaponCritical: weaponDisplayValue(snapshot, "weaponCritical"),
     weaponDamageType,
-    weaponSpecial: snapshotValue(snapshot, "weaponSpecial"),
-    damageSummary: `${weaponDamage} ${weaponDamageType}`.trim(),
+    weaponSpecial: weaponDisplayValue(snapshot, "weaponSpecial"),
   };
 }
 

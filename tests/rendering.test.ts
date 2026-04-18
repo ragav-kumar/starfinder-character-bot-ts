@@ -38,16 +38,17 @@ const snapshot: CharacterSnapshot = {
   weaponDamageType: "F",
   weaponRange: "80 ft",
   weaponAmmo: "52 / 1-20",
-  weaponSpecial: "Unavailable",
+  weaponSpecial: "-",
   lastUpdatedAt: new Date("2026-04-07T21:15:00Z"),
 };
 
 describe("rendering", () => {
-  test("builds template data with documented fallback behavior", () => {
+  test("builds template data with weapon placeholder fallback behavior", () => {
     const data = buildCharacterCardTemplateData("Paul-Paul Atreides", "110", {
       ...snapshot,
       conditions: "",
       weaponAmmo: " ",
+      weaponCritical: "Unavailable",
     }, false);
 
     expect("cardWidth" in data).toBe(false);
@@ -59,7 +60,8 @@ describe("rendering", () => {
     expect(data.resolve).toBe("5 / 5");
     expect("isStale" in data).toBe(false);
     expect(data.conditionsDisplay).toBe("None");
-    expect(data.weaponAmmo).toBe("Unavailable");
+    expect(data.weaponAmmo).toBe("-");
+    expect(data.weaponCritical).toBe("-");
     expect(data.lastUpdated).toBe(formatTimestamp(snapshot.lastUpdatedAt));
   });
 
@@ -81,6 +83,21 @@ describe("rendering", () => {
     expect(data.weaponAttack).toBe("+4");
     expect(data.weaponCritical).toBe("Burn 1d4");
     expect(data.weaponDamageType).toBe("F");
+  });
+
+  test("keeps weapon name unavailable while other missing weapon fields render as dashes", () => {
+    const data = buildCharacterCardTemplateData("Paul-Paul Atreides", "110", {
+      ...snapshot,
+      weaponName: "Unavailable",
+      weaponLevel: "Unavailable",
+      weaponDamage: "Unavailable",
+      weaponDamageType: "Unavailable",
+      weaponRange: " ",
+    }, false);
+
+    expect(data.weaponName).toBe("Unavailable");
+    expect(data.weaponLevel).toBe("-");
+    expect(data.weaponRange).toBe("-");
   });
 
   test("changes in placeholder-backed values change the populated template markup", async () => {
