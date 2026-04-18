@@ -2,8 +2,8 @@
   style="
     width: 450px;
     height: 560px;
-    display: grid;
-    grid-template-rows: 1fr auto;
+    display: flex;
+    flex-direction: column;
     box-sizing: border-box;
     padding: 8px;
     gap: 8px;
@@ -11,11 +11,13 @@
     color: #edf6ff;
     font-family: Orbitron;
     letter-spacing: 0.02em;
+    overflow: hidden;
   "
 >
   <!-- Header-->
   <div
     style="
+      flex: 0 0 auto;
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -71,7 +73,7 @@
   <div
     style="
       display: flex;
-      flex: 1;
+      flex: 1 1 auto;
       flex-direction: column;
       gap: 14px;
       padding: 18px;
@@ -79,210 +81,141 @@
       border-radius: 6px;
       background: #24313d;
       box-shadow: inset 0 0 0 1px #4d708f;
-      /* overflow: hidden; */
+      overflow: hidden;
     "
   >
     <!-- Panel grid-->
     <div
       style="
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        grid-template-areas:
-          'hp sp rp'
-          'initiative initiative attack'
-          'conditions conditions conditions'
-          'armour saves saves'
-          'weapon weapon weapon';
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
         gap: 8px;
       "
     >
-      <!-- Initiative -->
+      <!-- Health -->
       <div
         style="
-          grid-area: initiative;
           display: flex;
-          flex: 1;
-          flex-direction: column;
-          gap: 6px;
-          padding: 12px;
-          border: 1px solid #557893;
-          border-radius: 4px;
-          background: #314250;
+          gap: 8px;
+          flex: 0 0 auto;
         "
       >
+        <!-- HP -->
         <div
           style="
-            font-size: 12px;
-            font-weight: 700;
-            color: #a2c3df;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px;
+            border: 1px solid #557893;
+            border-radius: 4px;
+            background: #314250;
           "
         >
-          Initiative
+          <div
+            style="
+              font-size: 12px;
+              font-weight: 700;
+              color: #a2c3df;
+              letter-spacing: 0.12em;
+              text-transform: uppercase;
+            "
+          >
+            HP
+          </div>
+          <div
+            id="hp"
+            style="
+              font-size: 22px;
+              font-weight: 700;
+            "
+          >
+            18/18
+          </div>
         </div>
+        <!-- SP -->
         <div
-          id="initiative"
           style="
-            font-size: 24px;
-            font-weight: 700;
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px;
+            border: 1px solid #557893;
+            border-radius: 4px;
+            background: #314250;
           "
         >
-          +4
+          <div
+            style="
+              font-size: 12px;
+              font-weight: 700;
+              color: #a2c3df;
+              letter-spacing: 0.12em;
+              text-transform: uppercase;
+            "
+          >
+            SP
+          </div>
+          <div
+            id="stamina"
+            style="
+              font-size: 22px;
+              font-weight: 700;
+            "
+          >
+            12/12
+          </div>
         </div>
-      </div>
-      <!-- Attack -->
-      <div
-        style="
-          grid-area: attack;
-          display: flex;
-          flex: 1;
-          flex-direction: column;
-          gap: 6px;
-          padding: 12px;
-          border: 1px solid #557893;
-          border-radius: 4px;
-          background: #314250;
-        "
-      >
+        <!-- RP -->
         <div
           style="
-            font-size: 12px;
-            font-weight: 700;
-            color: #a2c3df;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px;
+            border: 1px solid #557893;
+            border-radius: 4px;
+            background: #314250;
           "
         >
-          Attack
-        </div>
-        <div
-          id="attack"
-          style="
-            font-size: 24px;
-            font-weight: 700;
-            word-break: break-word;
-          "
-        >
-          +6
-        </div>
-      </div>
-      <!-- HP -->
-      <div
-        style="
-          grid-area: hp;
-          display: flex;
-          flex: 1;
-          flex-direction: column;
-          gap: 4px;
-          padding: 12px;
-          border: 1px solid #557893;
-          border-radius: 4px;
-          background: #314250;
-        "
-      >
-        <div
-          style="
-            font-size: 12px;
-            font-weight: 700;
-            color: #a2c3df;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-          "
-        >
-          HP
-        </div>
-        <div
-          id="hp"
-          style="
-            font-size: 22px;
-            font-weight: 700;
-          "
-        >
-          18/18
-        </div>
-      </div>
-      <!-- SP -->
-      <div
-        style="
-          grid-area: sp;
-          display: flex;
-          flex: 1;
-          flex-direction: column;
-          gap: 4px;
-          padding: 12px;
-          border: 1px solid #557893;
-          border-radius: 4px;
-          background: #314250;
-        "
-      >
-        <div
-          style="
-            font-size: 12px;
-            font-weight: 700;
-            color: #a2c3df;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-          "
-        >
-          SP
-        </div>
-        <div
-          id="stamina"
-          style="
-            font-size: 22px;
-            font-weight: 700;
-          "
-        >
-          12/12
-        </div>
-      </div>
-      <!-- RP -->
-      <div
-        style="
-          grid-area: rp;
-          display: flex;
-          flex: 1;
-          flex-direction: column;
-          gap: 4px;
-          padding: 12px;
-          border: 1px solid #557893;
-          border-radius: 4px;
-          background: #314250;
-        "
-      >
-        <div
-          style="
-            font-size: 12px;
-            font-weight: 700;
-            color: #a2c3df;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-          "
-        >
-          RP
-        </div>
-        <div
-          id="resolve"
-          style="
-            font-size: 22px;
-            font-weight: 700;
-          "
-        >
-          4/4
+          <div
+            style="
+              font-size: 12px;
+              font-weight: 700;
+              color: #a2c3df;
+              letter-spacing: 0.12em;
+              text-transform: uppercase;
+            "
+          >
+            RP
+          </div>
+          <div
+            id="resolve"
+            style="
+              font-size: 22px;
+              font-weight: 700;
+            "
+          >
+            4/4
+          </div>
         </div>
       </div>
       <!-- Conditions -->
       <div
         style="
-          grid-area: conditions;
           display: flex;
           flex-direction: column;
           gap: 8px;
-          padding: 14px;
+          padding: 8px;
           border: 1px solid #557893;
           border-radius: 4px;
           background: #314250;
+          flex: 0 0 auto;
         "
       >
         <div
@@ -307,46 +240,88 @@
           Off-kilter
         </div>
       </div>
-      <!-- Armour -->
       <div
         style="
-          grid-area: armour;
           display: flex;
-          flex: 1;
-          flex-direction: column;
           gap: 8px;
-          padding: 14px;
-          border: 1px solid #557893;
-          border-radius: 4px;
-          background: #314250;
         "
       >
+        <!-- Initiative -->
         <div
           style="
-            font-size: 12px;
-            font-weight: 700;
-            color: #a2c3df;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-          "
-        >
-          Armor
-        </div>
-        <div
-          style="
+            grid-area: initiative;
             display: flex;
-            gap: 4px;
-            align-items: baseline;
-            flex-wrap: wrap;
-            font-size: 17px;
-            font-weight: 600;
+            flex: 1;
+            flex-direction: column;
+            gap: 6px;
+            padding: 8px;
+            border: 1px solid #557893;
+            border-radius: 4px;
+            background: #314250;
           "
         >
-          <span>EAC</span>
-          <span id="eac">15</span>
-          <span>/</span>
-          <span>KAC</span>
-          <span id="kac">16</span>
+          <div
+            style="
+              font-size: 12px;
+              font-weight: 700;
+              color: #a2c3df;
+              letter-spacing: 0.12em;
+              text-transform: uppercase;
+            "
+          >
+            Initiative
+          </div>
+          <div
+            id="initiative"
+            style="
+              font-size: 20px;
+              font-weight: 700;
+            "
+          >
+            +4
+          </div>
+        </div>
+        <!-- Armour -->
+        <div
+          style="
+            grid-area: armour;
+            display: flex;
+            flex: 2;
+            flex-direction: column;
+            gap: 8px;
+            padding: 8px;
+            border: 1px solid #557893;
+            border-radius: 4px;
+            background: #314250;
+          "
+        >
+          <div
+            style="
+              font-size: 12px;
+              font-weight: 700;
+              color: #a2c3df;
+              letter-spacing: 0.12em;
+              text-transform: uppercase;
+            "
+          >
+            Armor
+          </div>
+          <div
+            style="
+              display: flex;
+              gap: 8px;
+              align-items: baseline;
+              flex-wrap: wrap;
+              font-size: 14px;
+              font-weight: 600;
+            "
+          >
+            <span style="color: #a2c3df;">EAC</span>
+            <span id="eac">15</span>
+            <span style="color: #a2c3df; font-weight: 700; font-size: 1.2em">|</span>
+            <span style="color: #a2c3df;">KAC</span>
+            <span id="kac">16</span>
+          </div>
         </div>
       </div>
       <!-- Saves -->
@@ -354,10 +329,10 @@
         style="
           grid-area: saves;
           display: flex;
-          flex: 1;
+          flex: 0 0 auto;
           flex-direction: column;
           gap: 8px;
-          padding: 14px;
+          padding: 8px;
           border: 1px solid #557893;
           border-radius: 4px;
           background: #314250;
@@ -377,7 +352,7 @@
         <div
           style="
             display: flex;
-            gap: 4px;
+            gap: 8px;
             align-items: baseline;
             flex-wrap: wrap;
             font-size: 15px;
@@ -385,13 +360,13 @@
             line-height: 1.35;
           "
         >
-          <span>Fort</span>
+          <span style="color: #a2c3df;">Fort</span>
           <span id="fort">+4</span>
-          <span>|</span>
-          <span>Ref</span>
+          <span style="color: #a2c3df; font-weight: 700; font-size: 1.2em">|</span>
+          <span style="color: #a2c3df;">Ref</span>
           <span id="ref">+6</span>
-          <span>|</span>
-          <span>Will</span>
+          <span style="color: #a2c3df; font-weight: 700; font-size: 1.2em">|</span>
+          <span style="color: #a2c3df;">Will</span>
           <span id="will">+2</span>
         </div>
       </div>
@@ -401,74 +376,74 @@
           grid-area: weapon;
           display: flex;
           flex-direction: column;
-          gap: 10px;
-          padding: 14px;
+          gap: 4px;
+          padding: 8px;
           border: 1px solid #557893;
           border-radius: 4px;
           background: #314250;
         "
       >
-        <div
-          style="
+        <div style="
+            font-size: 12px;
+            font-weight: 700;
+            word-break: break-word;
+        ">
+          <span style="
             font-size: 12px;
             font-weight: 700;
             color: #a2c3df;
             letter-spacing: 0.12em;
-            text-transform: uppercase;
-          "
-        >
-          Weapon
-        </div>
-        <div
-          id="weaponName"
-          style="
-            font-size: 20px;
-            font-weight: 700;
-            word-break: break-word;
-          "
-        >
-          Tactical Semi-Auto Pistol
-        </div>
-        <div
-          style="
-            display: flex;
-            gap: 4px;
-            align-items: baseline;
-            flex-wrap: wrap;
-            font-size: 15px;
-            line-height: 1.4;
-            word-break: break-word;
-          "
-        >
-          <span>Damage</span>
-          <span id="damageSummary">1d6 P</span>
-        </div>
-        <div style="display: none;">
-          <span id="weaponDamage">1d6</span>
-          <span id="weaponDamageType">P</span>
+          ">
+            WEAPON:
+          </span>
+          <span
+            id="weaponName"
+            style="
+              font-size: 1.2em;
+              font-weight: 700;
+              word-break: break-word;
+            ">
+            Laser Pistol
+          </span>
         </div>
         <div
           style="
             display: flex;
-            gap: 4px;
-            align-items: baseline;
-            flex-wrap: wrap;
-            font-size: 15px;
-            line-height: 1.4;
-            word-break: break-word;
+            gap: 8px;
           "
         >
-          <span>Range</span>
-          <span id="weaponRange">30 ft</span>
-          <span>|</span>
-          <span>Ammo</span>
-          <span id="weaponAmmo">9 / 18</span>
+          <div>
+            <span style="color: #a2c3df;">ATK</span> <span id="weaponAttack">+4</span>
+          </div>
+          <span style="color: #a2c3df; font-weight: 700;">|</span>
+          <div>
+            <span style="color: #a2c3df;">DMG</span> <span id="weaponDamage">1d4 + LEV</span>
+          </div>
+          <span style="color: #a2c3df; font-weight: 700;">|</span>
+          <div>
+            <span style="color: #a2c3df;">CRIT</span> <span id="weaponCritical">Burn 1d4</span>
+          </div>
+        </div>
+        <div
+          style="
+            display: flex;
+            gap: 8px;
+          "
+        >
+          <div>
+            <span style="color: #a2c3df;">Range</span> <span id="range">80ft</span>
+          </div>
+          <span style="color: #a2c3df; font-weight: 700;">|</span>
+          <div>
+            <span style="color: #a2c3df;">Ammo</span> <span id="weaponAmmo">52 / 1-20</span>
+          </div>
         </div>
       </div>
     </div>
     <!-- Timestamp -->
     <div
       style="
+        flex: 0;
         display: flex;
         gap: 4px;
         align-items: baseline;
