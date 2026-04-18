@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import { describe, expect, test } from "vitest";
 
 import {
@@ -5,6 +7,7 @@ import {
   CARD_WIDTH,
   buildCharacterCardTemplateData,
   formatTimestamp,
+  populateCharacterCardTemplate,
   renderCharacterCard,
   renderCharacterCardMarkup,
 } from "../src/rendering.js";
@@ -54,6 +57,7 @@ describe("rendering", () => {
       weaponName: "<Laser Pistol>",
     }, false));
 
+    expect(markup).not.toContain("{{");
     expect(markup).toContain("Paul &lt;Paul&gt;");
     expect(markup).toContain("&lt;Laser Pistol&gt;");
     expect(markup).toContain("CURRENT");
@@ -89,6 +93,14 @@ describe("rendering", () => {
     expect(freshMarkup).toContain("CURRENT");
     expect(staleMarkup).toContain("STALE");
     expect(freshMarkup).not.toBe(staleMarkup);
+  });
+
+  test("throws when a required template id is missing", async () => {
+    const template = await readFile(new URL("../templates/character-card.html", import.meta.url), "utf8");
+    const templateMissingStatus = template.replace('id="status"', 'data-field="status"');
+
+    expect(() => populateCharacterCardTemplate(templateMissingStatus, buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, false)))
+      .toThrow("Missing character card template id: status");
   });
 });
 

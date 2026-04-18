@@ -9,6 +9,7 @@
     background: #f3ecd8;
     color: #f8f2df;
     font-family: Inter;
+    overflow: hidden;
   "
 >
   <div
@@ -24,10 +25,14 @@
   >
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
       <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1;">
-        <div style="font-size: 28px; font-weight: 700; line-height: 1.1; word-break: break-word;">{{displayName}}</div>
-        <div style="font-size: 14px; opacity: 0.92;">Character {{characterId}}</div>
+        <div id="displayName" style="font-size: 28px; font-weight: 700; line-height: 1.1; word-break: break-word;">Navasi</div>
+        <div style="display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; font-size: 14px; opacity: 0.92;">
+          <span>Character</span>
+          <span id="characterId">110</span>
+        </div>
       </div>
       <div
+        id="status"
         style="
           display: flex;
           align-items: center;
@@ -41,7 +46,7 @@
           font-weight: 700;
         "
       >
-        {{status}}
+        CURRENT
       </div>
     </div>
     <div style="font-size: 13px; opacity: 0.92; word-break: break-word;">Snapshot is current.</div>
@@ -63,52 +68,83 @@
     <div style="display: flex; gap: 12px;">
       <div style="display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; background: #273229;">
         <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Initiative</div>
-        <div style="font-size: 24px; font-weight: 700;">{{initiative}}</div>
+        <div id="initiative" style="font-size: 24px; font-weight: 700;">+4</div>
       </div>
       <div style="display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; background: #273229;">
         <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Attack</div>
-        <div style="font-size: 24px; font-weight: 700; word-break: break-word;">{{attack}}</div>
+        <div id="attack" style="font-size: 24px; font-weight: 700; word-break: break-word;">+6</div>
       </div>
     </div>
 
     <div style="display: flex; gap: 10px;">
       <div style="display: flex; flex: 1; flex-direction: column; gap: 4px; padding: 12px; border-radius: 14px; background: #273229;">
         <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">HP</div>
-        <div style="font-size: 22px; font-weight: 700;">{{hp}}</div>
+        <div id="hp" style="font-size: 22px; font-weight: 700;">18/18</div>
       </div>
       <div style="display: flex; flex: 1; flex-direction: column; gap: 4px; padding: 12px; border-radius: 14px; background: #273229;">
         <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">SP</div>
-        <div style="font-size: 22px; font-weight: 700;">{{stamina}}</div>
+        <div id="stamina" style="font-size: 22px; font-weight: 700;">12/12</div>
       </div>
       <div style="display: flex; flex: 1; flex-direction: column; gap: 4px; padding: 12px; border-radius: 14px; background: #273229;">
         <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">RP</div>
-        <div style="font-size: 22px; font-weight: 700;">{{resolve}}</div>
+        <div id="resolve" style="font-size: 22px; font-weight: 700;">4/4</div>
       </div>
     </div>
 
     <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: #273229;">
       <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Conditions</div>
-      <div style="font-size: 17px; font-weight: 600; word-break: break-word;">{{conditionsDisplay}}</div>
+      <div id="conditionsDisplay" style="font-size: 17px; font-weight: 600; word-break: break-word;">Off-kilter</div>
     </div>
 
     <div style="display: flex; gap: 10px;">
       <div style="display: flex; flex: 1; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: #273229;">
         <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Armor</div>
-        <div style="font-size: 17px; font-weight: 600;">EAC {{eac}} / KAC {{kac}}</div>
+        <div style="display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; font-size: 17px; font-weight: 600;">
+          <span>EAC</span>
+          <span id="eac">15</span>
+          <span>/</span>
+          <span>KAC</span>
+          <span id="kac">16</span>
+        </div>
       </div>
       <div style="display: flex; flex: 1; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: #273229;">
         <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Saves</div>
-        <div style="font-size: 15px; font-weight: 600; line-height: 1.35;">Fort {{fort}} | Ref {{ref}} | Will {{will}}</div>
+        <div style="display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; font-size: 15px; font-weight: 600; line-height: 1.35;">
+          <span>Fort</span>
+          <span id="fort">+4</span>
+          <span>|</span>
+          <span>Ref</span>
+          <span id="ref">+6</span>
+          <span>|</span>
+          <span>Will</span>
+          <span id="will">+2</span>
+        </div>
       </div>
     </div>
 
     <div style="display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: #273229;">
       <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Weapon</div>
-      <div style="font-size: 20px; font-weight: 700; word-break: break-word;">{{weaponName}}</div>
-      <div style="font-size: 15px; line-height: 1.4; word-break: break-word;">Damage {{damageSummary}}</div>
-      <div style="font-size: 15px; line-height: 1.4; word-break: break-word;">Range {{weaponRange}} | Ammo {{weaponAmmo}}</div>
+      <div id="weaponName" style="font-size: 20px; font-weight: 700; word-break: break-word;">Tactical Semi-Auto Pistol</div>
+      <div style="display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; font-size: 15px; line-height: 1.4; word-break: break-word;">
+        <span>Damage</span>
+        <span id="damageSummary">1d6 P</span>
+      </div>
+      <div style="display: none;">
+        <span id="weaponDamage">1d6</span>
+        <span id="weaponDamageType">P</span>
+      </div>
+      <div style="display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; font-size: 15px; line-height: 1.4; word-break: break-word;">
+        <span>Range</span>
+        <span id="weaponRange">30 ft</span>
+        <span>|</span>
+        <span>Ammo</span>
+        <span id="weaponAmmo">9 / 18</span>
+      </div>
     </div>
 
-    <div style="margin-top: auto; font-size: 12px; color: #d0c5af;">Last updated {{lastUpdated}}</div>
+    <div style="display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; margin-top: auto; font-size: 12px; color: #d0c5af;">
+      <span>Last updated</span>
+      <span id="lastUpdated">2026-04-07 21:15 UTC</span>
+    </div>
   </div>
 </div>

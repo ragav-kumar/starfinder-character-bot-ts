@@ -39,8 +39,32 @@ interface FontDefinition {
   style: "normal";
 }
 
+const CHARACTER_CARD_TEMPLATE_KEYS = [
+  "displayName",
+  "characterId",
+  "status",
+  "lastUpdated",
+  "initiative",
+  "hp",
+  "stamina",
+  "resolve",
+  "conditionsDisplay",
+  "eac",
+  "kac",
+  "fort",
+  "ref",
+  "will",
+  "attack",
+  "weaponName",
+  "weaponRange",
+  "weaponAmmo",
+  "weaponDamage",
+  "weaponDamageType",
+  "damageSummary",
+] as const satisfies ReadonlyArray<keyof CharacterCardTemplateData>;
+
 /**
- * Template placeholders available in `templates/character-card.html`.
+ * Template ids available in `templates/character-card.html`.
  *
  * Card state:
  * - `displayName`: rendered character name shown in the card header
@@ -58,8 +82,9 @@ interface FontDefinition {
  *
  * Fallback semantics:
  * - All snapshot-backed values except `conditionsDisplay` fall back to `Unavailable`
- * - Placeholder substitution always HTML-escapes inserted values
- * - Unknown placeholders throw to keep the template contract in sync with this type
+ * - Replacement always HTML-escapes inserted values
+ * - Each field key must map to exactly one `span` or `div` id in the template
+ * - Missing or duplicated ids throw to keep the template contract in sync with this type
  */
 export interface CharacterCardTemplateData {
   displayName: string;
@@ -116,6 +141,10 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 async function loadCharacterCardTemplate(): Promise<string> {
   templatePromise ??= readFile(new URL("../templates/character-card.html", import.meta.url), "utf8");
   return templatePromise;
@@ -167,15 +196,34 @@ export function buildCharacterCardTemplateData(
   };
 }
 
+export function populateCharacterCardTemplate(template: string, data: CharacterCardTemplateData): string {
+  let markup = template;
+
+  for (const key of CHARACTER_CARD_TEMPLATE_KEYS) {
+    const pattern = new RegExp(
+      `(<(span|div)\\b[^>]*\\bid=(["'])${escapeRegExp(key)}\\3[^>]*>)([\\s\\S]*?)(</\\2>)`,
+      "g",
+    );
+    const matches = [...markup.matchAll(pattern)];
+
+    if (matches.length === 0) {
+      throw new Error(`Missing character card template id: ${key}`);
+    }
+    if (matches.length > 1) {
+      throw new Error(`Duplicate character card template id: ${key}`);
+    }
+
+    markup = markup.replace(pattern, (_match, openingTag: string, _tagName: string, _quote: string, _content: string, closingTag: string) => {
+      return `${openingTag}${escapeHtml(data[key])}${closingTag}`;
+    });
+  }
+
+  return markup;
+}
+
 export async function renderCharacterCardMarkup(data: CharacterCardTemplateData): Promise<string> {
   const template = await loadCharacterCardTemplate();
-  return template.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_match, key: string) => {
-    const value = data[key as keyof CharacterCardTemplateData];
-    if (value === undefined) {
-      throw new Error(`Unknown character card template placeholder: ${key}`);
-    }
-    return escapeHtml(value);
-  });
+  return populateCharacterCardTemplate(template, data);
 }
 
 export async function renderCharacterCard(
