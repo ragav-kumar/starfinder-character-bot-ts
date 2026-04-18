@@ -54,7 +54,7 @@ export interface CompositeDashboardCard {
   stale: boolean;
 }
 
-const CHARACTER_CARD_TEMPLATE_KEYS = [
+export const CHARACTER_CARD_TEMPLATE_KEYS = [
   "displayName",
   "characterId",
   "status",

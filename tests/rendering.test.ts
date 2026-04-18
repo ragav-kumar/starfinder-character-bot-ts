@@ -6,6 +6,7 @@ import {
   buildCharacterCardTemplateData,
   CARD_HEIGHT,
   CARD_WIDTH,
+  CHARACTER_CARD_TEMPLATE_KEYS,
   DASHBOARD_COLUMNS,
   DASHBOARD_FILENAME,
   formatTimestamp,
@@ -65,18 +66,6 @@ describe("rendering", () => {
     expect(data.lastUpdated).toBe(formatTimestamp(snapshot.lastUpdatedAt));
   });
 
-  test("renders template markup with escaped placeholder values", async () => {
-    const markup = await renderCharacterCardMarkup(buildCharacterCardTemplateData("Paul <Paul>", "110", {
-      ...snapshot,
-      weaponName: "<Laser Pistol>",
-    }, false));
-
-    expect(markup).not.toContain("{{");
-    expect(markup).toContain("Paul &lt;Paul&gt;");
-    expect(markup).toContain("&lt;Laser Pistol&gt;");
-    expect(markup).toContain("CURRENT");
-  });
-
   test("exposes renamed weapon fields in template data", () => {
     const data = buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, false);
 
@@ -100,24 +89,66 @@ describe("rendering", () => {
     expect(data.weaponRange).toBe("-");
   });
 
-  test("changes in placeholder-backed values change the populated template markup", async () => {
-    const original = await renderCharacterCardMarkup(buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, false));
-    const changed = await renderCharacterCardMarkup(buildCharacterCardTemplateData("Paul-Paul Atreides", "110", {
-      ...snapshot,
-      weaponName: "Plasma Bolter",
-    }, false));
+  test("populates synthetic templates with escaped placeholder values", () => {
+    const markup = populateCharacterCardTemplate(
+      '<div><span id="displayName">placeholder</span><div id="weaponName">placeholder</div></div>',
+      buildCharacterCardTemplateData("Paul <Paul>", "110", {
+        ...snapshot,
+        weaponName: "<Laser Pistol>",
+      }, false),
+    );
 
-    expect(changed).not.toBe(original);
-    expect(changed).toContain("Plasma Bolter");
+    expect(markup).toContain("Paul &lt;Paul&gt;");
+    expect(markup).toContain("&lt;Laser Pistol&gt;");
   });
 
-  test("template renders a static layout with status text substitution", async () => {
-    const freshMarkup = await renderCharacterCardMarkup(buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, false));
-    const staleMarkup = await renderCharacterCardMarkup(buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, true));
+  test("replaces ids that are present in synthetic templates", () => {
+    const markup = populateCharacterCardTemplate(
+      '<div><span id="displayName">old</span><span id="status">old</span></div>',
+      buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, true),
+    );
 
-    expect(freshMarkup).toContain("CURRENT");
-    expect(staleMarkup).toContain("STALE");
-    expect(freshMarkup).not.toBe(staleMarkup);
+    expect(markup).toContain("Paul-Paul Atreides");
+    expect(markup).toContain("STALE");
+  });
+
+  test("skips ids that are absent from synthetic templates", () => {
+    expect(() =>
+      populateCharacterCardTemplate(
+        '<div><span id="displayName">old</span></div>',
+        buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, false),
+      ),
+    ).not.toThrow();
+  });
+
+  test("throws when a synthetic template reuses a supported id", () => {
+    expect(() =>
+      populateCharacterCardTemplate(
+        '<div><span id="displayName">old</span><div id="displayName">again</div></div>',
+        buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, false),
+      ),
+    ).toThrow("Duplicate character card template id: displayName");
+  });
+
+  test("loads the checked-in character card template", async () => {
+    const template = await readFile(new URL("../templates/character-card.html", import.meta.url), "utf8");
+
+    expect(template.length).toBeGreaterThan(0);
+  });
+
+  test("uses only supported template variable ids in the checked-in template", async () => {
+    const template = await readFile(new URL("../templates/character-card.html", import.meta.url), "utf8");
+    const ids = [...template.matchAll(/\bid=(["'])([^"'<>]+)\1/g)].map((match) => match[2]);
+
+    expect(ids.length).toBeGreaterThan(0);
+    expect(ids.every((id) => CHARACTER_CARD_TEMPLATE_KEYS.includes(id as (typeof CHARACTER_CARD_TEMPLATE_KEYS)[number]))).toBe(true);
+  });
+
+  test("renders checked-in template markup without assuming template shape", async () => {
+    const markup = await renderCharacterCardMarkup(buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, false));
+
+    expect(markup).not.toContain("{{");
+    expect(markup.length).toBeGreaterThan(0);
   });
 
   test("renders the character card through satori", async () => {
@@ -175,17 +206,5 @@ describe("rendering", () => {
 
     expect(attachment.filename).toBe(DASHBOARD_FILENAME);
     expect(attachment.data.length).toBeGreaterThan(0);
-  });
-
-  test("skips missing template ids", async () => {
-    const template = await readFile(new URL("../templates/character-card.html", import.meta.url), "utf8");
-    const templateMissingStatus = template.replace('id="status"', 'data-field="status"');
-
-    expect(() =>
-      populateCharacterCardTemplate(
-        templateMissingStatus,
-        buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, false),
-      ),
-    ).not.toThrow();
   });
 });

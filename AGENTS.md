@@ -38,6 +38,8 @@ This repository is a TypeScript Discord bot prototype for tracking Starfinder ch
 - Keep Discord platform details inside `src/bot.ts` and business rules inside `src/service.ts`.
 - When adding behavior, extend existing interfaces and constructor injection seams instead of introducing global state.
 - Keep rendered dashboard output and command acknowledgements consistent with current behavior unless a task explicitly changes product behavior.
+- Treat `templates/character-card.html` as effectively frozen unless the user explicitly asks for a template redesign.
+- Do not modify `templates/character-card.html` for cosmetic or layout reasons. Outside of an explicit redesign request, template edits are allowed only to ensure the file exists, remains `satori` compatible, and uses only ids that map to supported template variables.
 - Preserve channel restrictions:
   - config actions belong in the configured config channel
   - refresh actions belong in the dashboard channel
@@ -48,6 +50,7 @@ This repository is a TypeScript Discord bot prototype for tracking Starfinder ch
   - env parsing in `src/config.ts`
   - HTML scraping in `src/fetcher.ts`
   - tracking, refresh, or polling behavior in `src/service.ts`
+- Rendering tests must not assume the checked-in template's shape or that any particular template variable is used. The only safe assumptions are that the template file exists, renders through the `satori` pipeline, and any ids present map to supported template variables.
 - Favor regression-style tests that exercise user-visible behavior through the service layer.
 - For scraping changes, use small inline HTML fixtures similar to the existing tests.
 
@@ -55,3 +58,4 @@ This repository is a TypeScript Discord bot prototype for tracking Starfinder ch
 
 - Prefer concrete, verified fixes over speculative refactors.
 - If requirements are unclear, preserve current behavior and document any assumptions in the response.
+- Keep `README.md` human-facing. Do not add agent-focused, task-routing, or Codex-specific process language to the README; put that guidance in `AGENTS.md` instead.
