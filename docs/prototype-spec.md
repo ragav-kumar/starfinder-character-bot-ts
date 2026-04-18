@@ -242,23 +242,27 @@ Recommended ordering:
 ## 6.2 Required fields per panel
 Each character panel must show the following, when available:
 - **Name**
+- **Character class**
 - **Initiative** (total only)
 - **Health/Resolve section data**
   - current and total **HP**
   - current and total **Stamina**
   - current and total **Resolve**
 - **Conditions**
-  - derived from the character state and additional-modifier style fields
+  - derived from `character_state` plus `additionalmod`
 - **EAC**
 - **KAC**
 - **Saving throws**
-- **Attack bonuses** (total only)
+- **Equipped weapon attack value**
 - **Equipped weapon** information, including:
   - weapon name
+  - weapon level
+  - critical effect
   - ammo
   - damage type
   - range
   - damage
+  - special notes
 
 If a field cannot be extracted reliably, the panel should show `Unavailable` rather than fail completely.
 
@@ -269,13 +273,14 @@ Example mockup:
 
 ```md
 **Paul-Paul Atreides**  (`ID: 110`)
+Class: `Precog`
 Initiative: `+5`
 HP/SP/RP: `24/24 | 18/18 | 5/5`
 Conditions: `Off-kilter, Prone`
 EAC/KAC: `14 / 16`
 Saves: `Fort +4 | Ref +6 | Will +7`
-Attack: `+8`
-Weapon: `Laser Pistol` — `1d4 fire`, `80 ft`, `52/52 ammo`
+Weapon Attack: `+8`
+Weapon: `Laser Pistol` — `Level 1`, `1d4 fire`, `Burn 1d4`, `80 ft`, `52/52 ammo`
 _Last updated: 2026-04-07 21:15 UTC_
 ```
 

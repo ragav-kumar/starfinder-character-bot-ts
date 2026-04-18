@@ -5,6 +5,8 @@
 **Source of truth:** This document defines the intended Phase 2 behavior. If this document disagrees with `docs/prototype-spec.md`, this Phase 2 spec takes priority. If a later numbered phase spec is added, the later phase spec takes priority over this one.  
 **Change control:** Do not revise this specification unless a human explicitly requests a spec update.
 
+**Historical note:** Phase 3 is now specified in `docs/phase-3-spec.md` and supersedes this document where they conflict. Preserve this file as the Phase 2 reference spec.
+
 ---
 
 ## 1. Purpose
@@ -168,6 +170,10 @@ In this state:
 
 ## 6.1 Image model
 Each tracked character is rendered as a compact, readable status-panel image.
+
+Historical note:
+- Later implementation/spec work corrected the scraper model for conditions, character class, and equipped-weapon details.
+- Use Phase 3 as the current source of truth for field semantics; this Phase 2 section is retained to describe the Phase 2 image-dashboard intent.
 
 Each image must contain the same logical data required by Phase 1:
 - **Name**

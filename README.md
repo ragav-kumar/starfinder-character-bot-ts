@@ -1,7 +1,7 @@
 # starfinder-character-bot-ts
 
 A TypeScript Discord bot prototype for tracking Starfinder character sheets and
-presenting them in Discord.
+posting a persistent composite image dashboard in Discord.
 
 ## Configuration
 

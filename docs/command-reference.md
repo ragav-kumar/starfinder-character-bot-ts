@@ -21,10 +21,10 @@ Channel model:
 Dashboard model:
 - each guild has one authoritative dashboard post
 - the message body starts with a bot-readable metadata block
-- the dashboard post attachments contain one rendered image per tracked character
+- the dashboard post contains one composite dashboard image when one or more characters are tracked
 - routine updates edit the same dashboard post in place
 
-If no characters are tracked, the dashboard post remains in place with empty tracked metadata and no character images.
+If no characters are tracked, the dashboard post remains in place with empty tracked metadata and no dashboard image attachment.
 
 ---
 
@@ -51,8 +51,8 @@ Behavior:
 - fetches character data immediately for newly added characters
 
 Dashboard effect:
-- edits the authoritative dashboard post so each newly tracked character appears as a new image attachment
-- keeps attachment order aligned with tracked-character order
+- edits the authoritative dashboard post so the single composite image includes the newly tracked character
+- keeps visual card order aligned with tracked-character order
 
 Acknowledgement:
 - concise per-ID summary, typically ephemeral when supported
@@ -69,7 +69,7 @@ Behavior:
 - reports `Not tracked` if the ID is not in the roster
 
 Dashboard effect:
-- edits the authoritative dashboard post so that character's image is removed
+- edits the authoritative dashboard post so that character disappears from the composite image
 - updates dashboard metadata to keep the tracked roster in sync
 
 Acknowledgement:
@@ -85,7 +85,7 @@ Behavior:
 
 Dashboard effect:
 - keeps the authoritative dashboard post
-- updates it to an empty-dashboard state with no character images
+- updates it to an empty-dashboard state with no dashboard image attachment
 
 Acknowledgement:
 - short reset confirmation, typically ephemeral when supported
@@ -116,8 +116,8 @@ Behavior:
 
 Dashboard effect:
 - edits the authoritative dashboard post in place
-- replaces the image attachment set as a synchronized group
-- keeps the previous successful character data visible when possible and marks failed characters stale
+- replaces the composite dashboard image as a synchronized update
+- keeps the previous successful character data visible when possible and marks failed characters stale inside the composite image
 
 Acknowledgement:
 - temporary acknowledgement that should disappear after the refresh completes
@@ -171,3 +171,4 @@ Acknowledgement:
 
 - The current slash commands are defined in [src/bot.ts](/c:/repos/starfinder-character-bot-ts/src/bot.ts).
 - The authoritative dashboard metadata format and recovery helpers live in [src/dashboard.ts](/c:/repos/starfinder-character-bot-ts/src/dashboard.ts).
+- The current Phase 3 dashboard contract is defined in [docs/phase-3-spec.md](/c:/repos/starfinder-character-bot-ts/docs/phase-3-spec.md).
