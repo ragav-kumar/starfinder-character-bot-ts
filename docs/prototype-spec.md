@@ -1,9 +1,11 @@
-# Starfinder Character Bot Prototype Specification
+# Starfinder Character Bot Phase 1 Prototype Specification
 
-**Status:** Draft for prototype implementation  
+**Status:** Implemented Phase 1 reference specification  
 **Date:** 2026-04-07  
-**Source of truth:** This document defines the intended prototype behavior. If the current codebase disagrees, follow this spec.  
-**Change control:** Do not revise this specification unless a human explicitly requests a spec update.
+**Source of truth:** This document defines the intended and shipped Phase 1 behavior. If the current Phase 1 codebase disagrees, follow this spec. If a later numbered phase spec disagrees, the later phase spec takes priority.  
+**Change control:** Do not revise this specification unless a human explicitly requests a spec update. Preserve it as the Phase 1 historical/reference document.
+
+**Phase note:** This document is retained to describe the original message-based prototype implementation. Phase 2 and later specs define subsequent iterations and override this document where they conflict.
 
 ---
 
@@ -14,7 +16,7 @@ This Discord bot tracks one or more Starfinder characters hosted on Joe's Corner
 The bot is centered on the URL pattern:
 
 ```text
-https://www.joescorner.ca/Starfinder/Character-sheet.php?characterID=<numeric id>
+https://<site_url>?characterID=<numeric id>
 ```
 
 Each tracked character is identified by the numeric `characterID` query parameter from that page URL.
@@ -23,7 +25,7 @@ Each tracked character is identified by the numeric `characterID` query paramete
 
 ## 2. Prototype Scope
 
-This version is a **rough prototype spec**, not a full production design.
+This phase is a **rough prototype implementation spec**, not a full production design.
 
 ### In scope
 - Tracking multiple character IDs
