@@ -87,7 +87,7 @@ export class CharacterBotService {
           displayName: snapshot.name || `Character ${characterId}`,
           stale: false,
           lastRefreshError: null,
-          dashboardAttachment: renderCharacterCard(characterId, snapshot.name || `Character ${characterId}`, snapshot, false),
+          dashboardAttachment: await renderCharacterCard(characterId, snapshot.name || `Character ${characterId}`, snapshot, false),
         };
 
         state.tracked.set(characterId, record);
@@ -338,7 +338,7 @@ export class CharacterBotService {
         record.displayName = snapshot.name || record.displayName;
         record.stale = false;
         record.lastRefreshError = null;
-        record.dashboardAttachment = renderCharacterCard(characterId, record.displayName, snapshot, false);
+        record.dashboardAttachment = await renderCharacterCard(characterId, record.displayName, snapshot, false);
         state.lastSnapshots.set(characterId, snapshot);
 
         const changes = diffSnapshots(previousSnapshot, snapshot);
@@ -350,7 +350,7 @@ export class CharacterBotService {
         record.stale = true;
         record.lastRefreshError = String(error);
         if (previousSnapshot) {
-          record.dashboardAttachment = renderCharacterCard(characterId, record.displayName, previousSnapshot, true);
+          record.dashboardAttachment = await renderCharacterCard(characterId, record.displayName, previousSnapshot, true);
         }
       }
     }

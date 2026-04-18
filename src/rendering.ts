@@ -1,6 +1,13 @@
-import { createCanvas } from "@napi-rs/canvas";
+import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+
+import { Resvg } from "@resvg/resvg-js";
+import satori from "satori";
+import { html } from "satori-html";
 
 import { UNAVAILABLE, type CharacterSnapshot, type RenderedDashboardAttachment, type SnapshotField } from "./types.js";
+
+const require = createRequire(import.meta.url);
 
 const DISPLAYED_FIELDS: Array<{ key: SnapshotField; label: string }> = [
   { key: "name", label: "Name" },
@@ -22,12 +29,93 @@ const DISPLAYED_FIELDS: Array<{ key: SnapshotField; label: string }> = [
   { key: "weaponAmmo", label: "Ammo" },
 ];
 
+export const CARD_WIDTH = 450;
+export const CARD_HEIGHT = 560;
+
+interface FontDefinition {
+  data: Buffer;
+  name: string;
+  weight: 400 | 700;
+  style: "normal";
+}
+
+/**
+ * Template placeholders available in `templates/character-card.html`.
+ *
+ * Card frame and state:
+ * - `cardWidth`, `cardHeight`: overall card dimensions in pixels
+ * - `displayName`: rendered character name shown in the card header
+ * - `characterId`: numeric Starfinder character id
+ * - `statusLabel`: short status pill text (`CURRENT` or `STALE`)
+ * - `statusDetail`: longer status copy beneath the title
+ * - `lastUpdated`: UTC timestamp formatted for display
+ *
+ * Snapshot-backed values:
+ * - `initiative`, `hp`, `stamina`, `resolve`
+ * - `conditionsDisplay`: user-facing conditions text; falls back to `None` when conditions are unavailable
+ * - `eac`, `kac`, `fort`, `ref`, `will`
+ * - `attack`, `weaponName`, `weaponRange`, `weaponAmmo`
+ * - `weaponDamage`, `weaponDamageType`
+ * - `damageSummary`: preformatted `${weaponDamage} ${weaponDamageType}` string
+ *
+ * Theme and visual state tokens:
+ * - `cardBackground`, `panelBackground`, `surfaceBackground`
+ * - `headerBackground`, `headerTextColor`
+ * - `frameBorderColor`, `statusBackground`, `statusTextColor`
+ * - `bodyTextColor`, `labelTextColor`, `mutedTextColor`
+ *
+ * Fallback semantics:
+ * - All snapshot-backed values except `conditionsDisplay` fall back to `Unavailable`
+ * - Placeholder substitution always HTML-escapes inserted values
+ * - Unknown placeholders throw to keep the template contract in sync with this type
+ */
+export interface CharacterCardTemplateData {
+  cardWidth: string;
+  cardHeight: string;
+  displayName: string;
+  characterId: string;
+  statusLabel: string;
+  statusDetail: string;
+  lastUpdated: string;
+  initiative: string;
+  hp: string;
+  stamina: string;
+  resolve: string;
+  conditionsDisplay: string;
+  eac: string;
+  kac: string;
+  fort: string;
+  ref: string;
+  will: string;
+  attack: string;
+  weaponName: string;
+  weaponRange: string;
+  weaponAmmo: string;
+  weaponDamage: string;
+  weaponDamageType: string;
+  damageSummary: string;
+  cardBackground: string;
+  panelBackground: string;
+  surfaceBackground: string;
+  headerBackground: string;
+  headerTextColor: string;
+  frameBorderColor: string;
+  statusBackground: string;
+  statusTextColor: string;
+  bodyTextColor: string;
+  labelTextColor: string;
+  mutedTextColor: string;
+}
+
+let templatePromise: Promise<string> | undefined;
+let fontDefinitionsPromise: Promise<FontDefinition[]> | undefined;
+
 function snapshotValue(snapshot: CharacterSnapshot, key: SnapshotField): string {
   const value = String(snapshot[key]).trim();
   return value || UNAVAILABLE;
 }
 
-function formatTimestamp(date: Date): string {
+export function formatTimestamp(date: Date): string {
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
   const day = String(date.getUTCDate()).padStart(2, "0");
@@ -36,96 +124,117 @@ function formatTimestamp(date: Date): string {
   return `${year}-${month}-${day} ${hours}:${minutes} UTC`;
 }
 
-function wrapText(text: string, lineLength: number): string[] {
-  if (text.length <= lineLength) {
-    return [text];
-  }
+function resolveConditionsDisplay(snapshot: CharacterSnapshot): string {
+  const conditions = snapshotValue(snapshot, "conditions");
+  return conditions === UNAVAILABLE ? "None" : conditions;
+}
 
-  const words = text.split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word;
-    if (candidate.length > lineLength && current) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = candidate;
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+async function loadCharacterCardTemplate(): Promise<string> {
+  templatePromise ??= readFile(new URL("../templates/character-card.html", import.meta.url), "utf8");
+  return templatePromise;
+}
+
+async function loadFontDefinitions(): Promise<FontDefinition[]> {
+  fontDefinitionsPromise ??= Promise.all([
+    readFile(require.resolve("@fontsource/inter/files/inter-latin-400-normal.woff")),
+    readFile(require.resolve("@fontsource/inter/files/inter-latin-700-normal.woff")),
+  ]).then(([regular, bold]) => [
+    { name: "Inter", data: regular, weight: 400, style: "normal" as const },
+    { name: "Inter", data: bold, weight: 700, style: "normal" as const },
+  ]);
+
+  return fontDefinitionsPromise;
+}
+
+export function buildCharacterCardTemplateData(
+  displayName: string,
+  characterId: string,
+  snapshot: CharacterSnapshot,
+  stale: boolean,
+): CharacterCardTemplateData {
+  const weaponDamage = snapshotValue(snapshot, "weaponDamage");
+  const weaponDamageType = snapshotValue(snapshot, "weaponDamageType");
+
+  return {
+    cardWidth: String(CARD_WIDTH),
+    cardHeight: String(CARD_HEIGHT),
+    displayName: displayName.trim() || `Character ${characterId}`,
+    characterId,
+    statusLabel: stale ? "STALE" : "CURRENT",
+    statusDetail: stale ? "Last refresh failed. Showing the previous successful snapshot." : "Snapshot is current.",
+    lastUpdated: formatTimestamp(snapshot.lastUpdatedAt),
+    initiative: snapshotValue(snapshot, "initiative"),
+    hp: snapshotValue(snapshot, "hp"),
+    stamina: snapshotValue(snapshot, "stamina"),
+    resolve: snapshotValue(snapshot, "resolve"),
+    conditionsDisplay: resolveConditionsDisplay(snapshot),
+    eac: snapshotValue(snapshot, "eac"),
+    kac: snapshotValue(snapshot, "kac"),
+    fort: snapshotValue(snapshot, "fort"),
+    ref: snapshotValue(snapshot, "ref"),
+    will: snapshotValue(snapshot, "will"),
+    attack: snapshotValue(snapshot, "attack"),
+    weaponName: snapshotValue(snapshot, "weaponName"),
+    weaponRange: snapshotValue(snapshot, "weaponRange"),
+    weaponAmmo: snapshotValue(snapshot, "weaponAmmo"),
+    weaponDamage,
+    weaponDamageType,
+    damageSummary: `${weaponDamage} ${weaponDamageType}`.trim(),
+    cardBackground: "#f3ecd8",
+    panelBackground: "#1f1d17",
+    surfaceBackground: stale ? "#342124" : "#273229",
+    headerBackground: stale ? "#8d2f2f" : "#294c3b",
+    headerTextColor: "#f8f2df",
+    frameBorderColor: stale ? "#d65c5c" : "#85b199",
+    statusBackground: stale ? "#f5d1d1" : "#d5eadc",
+    statusTextColor: stale ? "#6f1c1c" : "#1d4b36",
+    bodyTextColor: "#f8f2df",
+    labelTextColor: "#c0d3c8",
+    mutedTextColor: "#d0c5af",
+  };
+}
+
+export async function renderCharacterCardMarkup(data: CharacterCardTemplateData): Promise<string> {
+  const template = await loadCharacterCardTemplate();
+  return template.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_match, key: string) => {
+    const value = data[key as keyof CharacterCardTemplateData];
+    if (value === undefined) {
+      throw new Error(`Unknown character card template placeholder: ${key}`);
     }
-  }
-
-  if (current) {
-    lines.push(current);
-  }
-
-  return lines.length > 0 ? lines : [text];
+    return escapeHtml(value);
+  });
 }
 
-export function buildCharacterCardLines(displayName: string, characterId: string, snapshot: CharacterSnapshot, stale: boolean): string[] {
-  const lines = [
-    displayName,
-    `ID: ${characterId}`,
-    stale ? "STALE - last refresh failed" : "Status: current",
-    `Initiative  ${snapshotValue(snapshot, "initiative")}`,
-    `HP / SP / RP  ${snapshotValue(snapshot, "hp")} | ${snapshotValue(snapshot, "stamina")} | ${snapshotValue(snapshot, "resolve")}`,
-    `Conditions  ${snapshot.conditions === UNAVAILABLE ? "None" : snapshot.conditions}`,
-    `EAC / KAC  ${snapshotValue(snapshot, "eac")} / ${snapshotValue(snapshot, "kac")}`,
-    `Saves  Fort ${snapshotValue(snapshot, "fort")} | Ref ${snapshotValue(snapshot, "ref")} | Will ${snapshotValue(snapshot, "will")}`,
-    `Attack  ${snapshotValue(snapshot, "attack")}`,
-    `Weapon  ${snapshotValue(snapshot, "weaponName")}`,
-    `Damage  ${snapshotValue(snapshot, "weaponDamage")} ${snapshotValue(snapshot, "weaponDamageType")}`,
-    `Range  ${snapshotValue(snapshot, "weaponRange")}   Ammo  ${snapshotValue(snapshot, "weaponAmmo")}`,
-    `Last updated  ${formatTimestamp(snapshot.lastUpdatedAt)}`,
-  ];
-
-  return lines.flatMap((line, index) => (index >= 5 ? wrapText(line, 22) : [line]));
-}
-
-export function renderCharacterCard(
+export async function renderCharacterCard(
   characterId: string,
   displayName: string,
   snapshot: CharacterSnapshot,
   stale = false,
-): RenderedDashboardAttachment {
-  const width = 450;
-  const height = 560;
-  const canvas = createCanvas(width, height);
-  const context = canvas.getContext("2d");
-
-  context.fillStyle = "#f3ecd8";
-  context.fillRect(0, 0, width, height);
-
-  context.fillStyle = stale ? "#8d2f2f" : "#294c3b";
-  context.fillRect(0, 0, width, 80);
-
-  context.fillStyle = "#1f1d17";
-  context.fillRect(18, 96, width - 36, height - 114);
-
-  context.fillStyle = "#f8f2df";
-  context.font = "bold 22px sans-serif";
-  context.fillText(displayName, 24, 44, width - 48);
-  context.font = "16px sans-serif";
-  context.fillText(`Character ${characterId}`, 24, 66);
-
-  const lines = buildCharacterCardLines(displayName, characterId, snapshot, stale);
-  context.font = "16px sans-serif";
-  let y = 126;
-  for (const [index, line] of lines.entries()) {
-    context.fillStyle = index === 2 && stale ? "#ffb0b0" : "#f8f2df";
-    context.fillText(line, 32, y, width - 64);
-    y += 21;
-  }
-
-  context.strokeStyle = stale ? "#d65c5c" : "#85b199";
-  context.lineWidth = 3;
-  context.strokeRect(20, 98, width - 40, height - 118);
+): Promise<RenderedDashboardAttachment> {
+  const data = buildCharacterCardTemplateData(displayName, characterId, snapshot, stale);
+  const markup = await renderCharacterCardMarkup(data);
+  const svg = await satori(html(markup), {
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    fonts: await loadFontDefinitions(),
+  });
+  const pngBuffer = new Resvg(svg).render().asPng();
 
   return {
     kind: "rendered",
     characterId,
     filename: `character-${characterId}.png`,
     contentType: "image/png",
-    data: canvas.toBuffer("image/png"),
+    data: pngBuffer,
   };
 }
 

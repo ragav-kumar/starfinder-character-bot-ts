@@ -6,15 +6,18 @@
   "scripts": {
     "lint": "eslint .",
     "prebuild": "npm audit && npm run lint",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-render-assets.mjs",
     "prestart": "npm audit && npm run lint",
     "start": "tsx src/index.ts",
     "test": "vitest run"
   },
   "dependencies": {
-    "@napi-rs/canvas": "^0.1.80",
+    "@fontsource/inter": "^5.2.8",
+    "@resvg/resvg-js": "^2.6.2",
     "discord.js": "^14.19.3",
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "satori": "^0.26.0",
+    "satori-html": "^0.3.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

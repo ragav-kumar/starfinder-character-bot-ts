@@ -1,6 +1,13 @@
 import { describe, expect, test } from "vitest";
 
-import { buildCharacterCardLines, renderCharacterCard } from "../src/rendering.js";
+import {
+  CARD_HEIGHT,
+  CARD_WIDTH,
+  buildCharacterCardTemplateData,
+  formatTimestamp,
+  renderCharacterCard,
+  renderCharacterCardMarkup,
+} from "../src/rendering.js";
 import type { CharacterSnapshot } from "../src/types.js";
 
 const snapshot: CharacterSnapshot = {
@@ -25,21 +32,58 @@ const snapshot: CharacterSnapshot = {
 };
 
 describe("rendering", () => {
-  test("builds readable card lines", () => {
-    const lines = buildCharacterCardLines("Paul-Paul Atreides", "110", snapshot, false);
+  test("builds template data with documented fallback behavior", () => {
+    const data = buildCharacterCardTemplateData("Paul-Paul Atreides", "110", {
+      ...snapshot,
+      conditions: "",
+      weaponAmmo: " ",
+    }, false);
 
-    expect(lines[0]).toBe("Paul-Paul Atreides");
-    expect(lines.some((line) => line.includes("Weapon"))).toBe(true);
-    expect(lines.some((line) => line.includes("Last updated"))).toBe(true);
+    expect(data.cardWidth).toBe(String(CARD_WIDTH));
+    expect(data.cardHeight).toBe(String(CARD_HEIGHT));
+    expect(data.conditionsDisplay).toBe("None");
+    expect(data.weaponAmmo).toBe("Unavailable");
+    expect(data.lastUpdated).toBe(formatTimestamp(snapshot.lastUpdatedAt));
   });
 
-  test("renders a png attachment and stale state changes output", () => {
-    const fresh = renderCharacterCard("110", "Paul-Paul Atreides", snapshot, false);
-    const stale = renderCharacterCard("110", "Paul-Paul Atreides", snapshot, true);
+  test("renders template markup with escaped placeholder values", async () => {
+    const markup = await renderCharacterCardMarkup(buildCharacterCardTemplateData("Paul <Paul>", "110", {
+      ...snapshot,
+      weaponName: "<Laser Pistol>",
+    }, false));
+
+    expect(markup).toContain("Paul &lt;Paul&gt;");
+    expect(markup).toContain("&lt;Laser Pistol&gt;");
+  });
+
+  test("renders a png attachment with configured dimensions and stale-state differences", async () => {
+    const fresh = await renderCharacterCard("110", "Paul-Paul Atreides", snapshot, false);
+    const stale = await renderCharacterCard("110", "Paul-Paul Atreides", snapshot, true);
 
     expect(fresh.filename).toBe("character-110.png");
     expect(fresh.contentType).toBe("image/png");
     expect(fresh.data.subarray(0, 4)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+    expect(readPngWidth(fresh.data)).toBe(CARD_WIDTH);
+    expect(readPngHeight(fresh.data)).toBe(CARD_HEIGHT);
     expect(stale.data.equals(fresh.data)).toBe(false);
   });
+
+  test("changes in placeholder-backed values change the populated template markup", async () => {
+    const original = await renderCharacterCardMarkup(buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, false));
+    const changed = await renderCharacterCardMarkup(buildCharacterCardTemplateData("Paul-Paul Atreides", "110", {
+      ...snapshot,
+      weaponName: "Plasma Bolter",
+    }, false));
+
+    expect(changed).not.toBe(original);
+    expect(changed).toContain("Plasma Bolter");
+  });
 });
+
+function readPngWidth(buffer: Buffer): number {
+  return buffer.readUInt32BE(16);
+}
+
+function readPngHeight(buffer: Buffer): number {
+  return buffer.readUInt32BE(20);
+}
