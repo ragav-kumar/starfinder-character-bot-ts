@@ -83,8 +83,8 @@ const CHARACTER_CARD_TEMPLATE_KEYS = [
  * Fallback semantics:
  * - All snapshot-backed values except `conditionsDisplay` fall back to `Unavailable`
  * - Replacement always HTML-escapes inserted values
- * - Each field key must map to exactly one `span` or `div` id in the template
- * - Missing or duplicated ids throw to keep the template contract in sync with this type
+ * - Template ids are optional; missing ids are skipped
+ * - Duplicated ids still throw to keep the template contract in sync with this type
  */
 export interface CharacterCardTemplateData {
   displayName: string;
@@ -207,7 +207,7 @@ export function populateCharacterCardTemplate(template: string, data: CharacterC
     const matches = [...markup.matchAll(pattern)];
 
     if (matches.length === 0) {
-      throw new Error(`Missing character card template id: ${key}`);
+      continue;
     }
     if (matches.length > 1) {
       throw new Error(`Duplicate character card template id: ${key}`);

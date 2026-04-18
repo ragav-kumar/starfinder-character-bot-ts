@@ -10,6 +10,7 @@ import {
   type Message,
 } from "discord.js";
 
+import { logException } from "./logging.js";
 import { CharacterBotService } from "./service.js";
 import type {
   CommandTarget,
@@ -194,7 +195,11 @@ class DiscordInteractionTarget implements CommandTarget {
         if (this.interaction.deferred || this.interaction.replied) {
           await this.interaction.deleteReply();
         }
-      } catch {
+      } catch (error) {
+        logException("DiscordInteractionTarget.sendAck.deleteReply", error, {
+          guildId: this.guildId,
+          channelId: this.channelId,
+        });
         return;
       }
     }
@@ -252,6 +257,11 @@ export function createDiscordClient(config: RuntimeConfig, service?: CharacterBo
           return;
       }
     } catch (error) {
+      logException("createDiscordClient.interactionCreate", error, {
+        guildId: interaction.guildId,
+        channelId: interaction.channelId,
+        commandName: interaction.commandName,
+      });
       const message = `Command failed: ${error instanceof Error ? error.message : String(error)}`;
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp({ content: message, flags: MessageFlags.Ephemeral }).catch(() => undefined);

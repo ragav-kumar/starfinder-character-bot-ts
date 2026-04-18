@@ -1,3 +1,4 @@
+import { logException } from "./logging.js";
 import { UNAVAILABLE, type CharacterSnapshot } from "./types.js";
 
 export function buildCharacterUrl(baseUrl: string, characterId: string | number): string {
@@ -7,9 +8,18 @@ export function buildCharacterUrl(baseUrl: string, characterId: string | number)
 }
 
 export async function fetchCharacterPage(url: string): Promise<string> {
-  const response = await fetch(url);
+  let response: Response;
+  try {
+    response = await fetch(url);
+  } catch (error) {
+    logException("fetchCharacterPage", error, { url });
+    throw error;
+  }
+
   if (!response.ok) {
-    throw new Error(`Request failed with ${response.status}`);
+    const error = new Error(`Request failed with ${response.status} for ${url}`);
+    logException("fetchCharacterPage", error, { url, status: response.status });
+    throw error;
   }
   return await response.text();
 }

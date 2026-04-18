@@ -2,15 +2,15 @@
   style="
     width: 450px;
     height: 560px;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows: 1fr auto;
     box-sizing: border-box;
-    padding: 18px;
+    padding: 8px;
+    gap: 8px;
     background: #d6e1eb;
     color: #edf6ff;
     font-family: Orbitron;
     letter-spacing: 0.02em;
-    overflow: hidden;
   "
 >
   <!-- Header-->
@@ -67,29 +67,39 @@
       </div>
     </div>
   </div>
-
+  <!-- Body -->
   <div
     style="
       display: flex;
       flex: 1;
       flex-direction: column;
       gap: 14px;
-      margin-top: 14px;
       padding: 18px;
       border: 3px solid #86abc9;
       border-radius: 6px;
       background: #24313d;
       box-shadow: inset 0 0 0 1px #4d708f;
+      /* overflow: hidden; */
     "
   >
+    <!-- Panel grid-->
     <div
       style="
-        display: flex;
-        gap: 12px;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-areas:
+          'hp sp rp'
+          'initiative initiative attack'
+          'conditions conditions conditions'
+          'armour saves saves'
+          'weapon weapon weapon';
+        gap: 8px;
       "
     >
+      <!-- Initiative -->
       <div
         style="
+          grid-area: initiative;
           display: flex;
           flex: 1;
           flex-direction: column;
@@ -121,8 +131,10 @@
           +4
         </div>
       </div>
+      <!-- Attack -->
       <div
         style="
+          grid-area: attack;
           display: flex;
           flex: 1;
           flex-direction: column;
@@ -155,16 +167,10 @@
           +6
         </div>
       </div>
-    </div>
-
-    <div
-      style="
-        display: flex;
-        gap: 10px;
-      "
-    >
+      <!-- HP -->
       <div
         style="
+          grid-area: hp;
           display: flex;
           flex: 1;
           flex-direction: column;
@@ -196,8 +202,10 @@
           18/18
         </div>
       </div>
+      <!-- SP -->
       <div
         style="
+          grid-area: sp;
           display: flex;
           flex: 1;
           flex-direction: column;
@@ -229,8 +237,10 @@
           12/12
         </div>
       </div>
+      <!-- RP -->
       <div
         style="
+          grid-area: rp;
           display: flex;
           flex: 1;
           flex-direction: column;
@@ -262,50 +272,45 @@
           4/4
         </div>
       </div>
-    </div>
-
-    <div
-      style="
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 14px;
-        border: 1px solid #557893;
-        border-radius: 4px;
-        background: #314250;
-      "
-    >
+      <!-- Conditions -->
       <div
         style="
-          font-size: 12px;
-          font-weight: 700;
-          color: #a2c3df;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
+          grid-area: conditions;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 14px;
+          border: 1px solid #557893;
+          border-radius: 4px;
+          background: #314250;
         "
       >
-        Conditions
+        <div
+          style="
+            font-size: 12px;
+            font-weight: 700;
+            color: #a2c3df;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+          "
+        >
+          Conditions
+        </div>
+        <div
+          id="conditionsDisplay"
+          style="
+            font-size: 17px;
+            font-weight: 600;
+            word-break: break-word;
+          "
+        >
+          Off-kilter
+        </div>
       </div>
-      <div
-        id="conditionsDisplay"
-        style="
-          font-size: 17px;
-          font-weight: 600;
-          word-break: break-word;
-        "
-      >
-        Off-kilter
-      </div>
-    </div>
-
-    <div
-      style="
-        display: flex;
-        gap: 10px;
-      "
-    >
+      <!-- Armour -->
       <div
         style="
+          grid-area: armour;
           display: flex;
           flex: 1;
           flex-direction: column;
@@ -344,8 +349,10 @@
           <span id="kac">16</span>
         </div>
       </div>
+      <!-- Saves -->
       <div
         style="
+          grid-area: saves;
           display: flex;
           flex: 1;
           flex-direction: column;
@@ -388,77 +395,78 @@
           <span id="will">+2</span>
         </div>
       </div>
-    </div>
-
-    <div
-      style="
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        padding: 14px;
-        border: 1px solid #557893;
-        border-radius: 4px;
-        background: #314250;
-      "
-    >
+      <!-- Weapon -->
       <div
         style="
-          font-size: 12px;
-          font-weight: 700;
-          color: #a2c3df;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-        "
-      >
-        Weapon
-      </div>
-      <div
-        id="weaponName"
-        style="
-          font-size: 20px;
-          font-weight: 700;
-          word-break: break-word;
-        "
-      >
-        Tactical Semi-Auto Pistol
-      </div>
-      <div
-        style="
+          grid-area: weapon;
           display: flex;
-          gap: 4px;
-          align-items: baseline;
-          flex-wrap: wrap;
-          font-size: 15px;
-          line-height: 1.4;
-          word-break: break-word;
+          flex-direction: column;
+          gap: 10px;
+          padding: 14px;
+          border: 1px solid #557893;
+          border-radius: 4px;
+          background: #314250;
         "
       >
-        <span>Damage</span>
-        <span id="damageSummary">1d6 P</span>
-      </div>
-      <div style="display: none;">
-        <span id="weaponDamage">1d6</span>
-        <span id="weaponDamageType">P</span>
-      </div>
-      <div
-        style="
-          display: flex;
-          gap: 4px;
-          align-items: baseline;
-          flex-wrap: wrap;
-          font-size: 15px;
-          line-height: 1.4;
-          word-break: break-word;
-        "
-      >
-        <span>Range</span>
-        <span id="weaponRange">30 ft</span>
-        <span>|</span>
-        <span>Ammo</span>
-        <span id="weaponAmmo">9 / 18</span>
+        <div
+          style="
+            font-size: 12px;
+            font-weight: 700;
+            color: #a2c3df;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+          "
+        >
+          Weapon
+        </div>
+        <div
+          id="weaponName"
+          style="
+            font-size: 20px;
+            font-weight: 700;
+            word-break: break-word;
+          "
+        >
+          Tactical Semi-Auto Pistol
+        </div>
+        <div
+          style="
+            display: flex;
+            gap: 4px;
+            align-items: baseline;
+            flex-wrap: wrap;
+            font-size: 15px;
+            line-height: 1.4;
+            word-break: break-word;
+          "
+        >
+          <span>Damage</span>
+          <span id="damageSummary">1d6 P</span>
+        </div>
+        <div style="display: none;">
+          <span id="weaponDamage">1d6</span>
+          <span id="weaponDamageType">P</span>
+        </div>
+        <div
+          style="
+            display: flex;
+            gap: 4px;
+            align-items: baseline;
+            flex-wrap: wrap;
+            font-size: 15px;
+            line-height: 1.4;
+            word-break: break-word;
+          "
+        >
+          <span>Range</span>
+          <span id="weaponRange">30 ft</span>
+          <span>|</span>
+          <span>Ammo</span>
+          <span id="weaponAmmo">9 / 18</span>
+        </div>
       </div>
     </div>
-
+    <!-- Timestamp -->
     <div
       style="
         display: flex;
@@ -474,4 +482,5 @@
       <span id="lastUpdated">2026-04-07 21:15 UTC</span>
     </div>
   </div>
+
 </div>

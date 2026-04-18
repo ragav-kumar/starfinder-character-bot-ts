@@ -1,5 +1,6 @@
 import { selectAuthoritativeDashboard, formatDashboardMetadata } from "./dashboard.js";
 import { buildCharacterUrl, fetchCharacterPage, scrapeCharacterSheet } from "./fetcher.js";
+import { logException } from "./logging.js";
 import { renderCharacterCard, diffSnapshots } from "./rendering.js";
 import { GuildStateStore } from "./state.js";
 import type {
@@ -94,7 +95,12 @@ export class CharacterBotService {
         state.lastSnapshots.set(characterId, snapshot);
         state.trackedOrder.push(characterId);
         added.push(`${record.displayName} (${characterId})`);
-      } catch {
+      } catch (error) {
+        logException("CharacterBotService.addCharacters", error, {
+          guildId,
+          characterId,
+          url: buildCharacterUrl(this.config.siteBaseUrl, characterId),
+        });
         failed.push(`${characterId} (page not reachable)`);
       }
     }
@@ -346,6 +352,11 @@ export class CharacterBotService {
           changeSummaries.push(`${record.displayName}: ${change}`);
         }
       } catch (error) {
+        logException("CharacterBotService.refreshTrackedCharacters", error, {
+          guildId,
+          characterId,
+          url: buildCharacterUrl(this.config.siteBaseUrl, characterId),
+        });
         failures.push(`${record.displayName} (${characterId})`);
         record.stale = true;
         record.lastRefreshError = String(error);

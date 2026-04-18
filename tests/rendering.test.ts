@@ -95,12 +95,16 @@ describe("rendering", () => {
     expect(freshMarkup).not.toBe(staleMarkup);
   });
 
-  test("throws when a required template id is missing", async () => {
+  test("skips missing template ids", async () => {
     const template = await readFile(new URL("../templates/character-card.html", import.meta.url), "utf8");
     const templateMissingStatus = template.replace('id="status"', 'data-field="status"');
 
-    expect(() => populateCharacterCardTemplate(templateMissingStatus, buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, false)))
-      .toThrow("Missing character card template id: status");
+    expect(() =>
+      populateCharacterCardTemplate(
+        templateMissingStatus,
+        buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, false),
+      ),
+    ).not.toThrow();
   });
 });
 

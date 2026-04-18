@@ -1,6 +1,6 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { buildCharacterUrl, scrapeCharacterSheet } from "../src/fetcher.js";
+import { buildCharacterUrl, fetchCharacterPage, scrapeCharacterSheet } from "../src/fetcher.js";
 
 const SAMPLE_CHARACTER_HTML = `
 <html>
@@ -98,6 +98,17 @@ const SAMPLE_CHARACTER_HTML = `
 `;
 
 describe("fetcher", () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
   test("builds a character url from the configured base", () => {
     expect(buildCharacterUrl("https://private.example.test/Character-sheet.php", "245")).toBe(
       "https://private.example.test/Character-sheet.php?characterID=245",
@@ -142,6 +153,26 @@ describe("fetcher", () => {
 
     const snapshot = scrapeCharacterSheet(html, { characterId: "123" });
     expect(snapshot.conditions).toBe("Off-kilter, Prone");
+  });
+
+  test("logs and throws when the response is not ok", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 503,
+      })),
+    );
+
+    await expect(fetchCharacterPage("https://private.example.test/Character-sheet.php?characterID=245")).rejects.toThrow(
+      "Request failed with 503 for https://private.example.test/Character-sheet.php?characterID=245",
+    );
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("fetchCharacterPage"));
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("https://private.example.test/Character-sheet.php?characterID=245"),
+    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("503"));
   });
 
   test("missing fields fall back to unavailable", () => {

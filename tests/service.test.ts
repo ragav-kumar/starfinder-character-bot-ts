@@ -1,5 +1,16 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { Mock } from "vitest";
+
+vi.mock("../src/rendering.js", () => ({
+  diffSnapshots: vi.fn(() => []),
+  renderCharacterCard: vi.fn(async (characterId: string): Promise<DashboardAttachment> => ({
+    kind: "rendered",
+    characterId,
+    filename: `character-${characterId}.png`,
+    contentType: "image/png",
+    data: Buffer.from(`rendered-${characterId}`),
+  })),
+}));
 
 import { formatDashboardMetadata } from "../src/dashboard.js";
 import { CharacterBotService } from "../src/service.js";
@@ -106,8 +117,10 @@ describe("CharacterBotService", () => {
   let fetchPage: Mock<(url: string) => Promise<string>>;
   let dashboardStore: FakeDashboardStore;
   let service: CharacterBotService;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     stateStore = new GuildStateStore();
     dashboardStore = new FakeDashboardStore();
     fetchPage = vi.fn(async (url: string) => {
@@ -124,6 +137,10 @@ describe("CharacterBotService", () => {
       fetchPage,
       now: () => new Date("2026-04-17T18:30:00Z"),
     });
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   test("add tracks ids and creates one dashboard post", async () => {
@@ -246,6 +263,40 @@ describe("CharacterBotService", () => {
 
     expect(stateStore.get("1").tracked.get("110")?.stale).toBe(true);
     expect(dashboardStore.edited.at(-1)?.attachments).toHaveLength(1);
+  });
+
+  test("add logs fetch failures with the character url", async () => {
+    const target = new FakeTarget("1", "200");
+
+    await service.addCharacters(target, "404");
+
+    expect(target.acks.at(-1)?.content).toContain("Failed: 404 (page not reachable)");
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("CharacterBotService.addCharacters"),
+    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("https://private.example.test/Character-sheet.php?characterID=404"),
+    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("missing"));
+  });
+
+  test("refresh logs fetch failures with stack details and the character url", async () => {
+    const target = new FakeTarget("1", "200");
+    await service.addCharacters(target, "110");
+
+    fetchPage.mockRejectedValueOnce(new Error("boom"));
+
+    await service.refreshCharacters(target);
+
+    expect(stateStore.get("1").tracked.get("110")?.stale).toBe(true);
+    expect(dashboardStore.edited.at(-1)?.attachments).toHaveLength(1);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("CharacterBotService.refreshTrackedCharacters"),
+    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("https://private.example.test/Character-sheet.php?characterID=110"),
+    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Stack:"));
   });
 
   test("tracking start and stop manage polling lifecycle", async () => {
