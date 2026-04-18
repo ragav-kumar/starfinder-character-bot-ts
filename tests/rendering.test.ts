@@ -6,6 +6,7 @@ import {
   buildCharacterCardTemplateData,
   formatTimestamp,
   populateCharacterCardTemplate,
+  renderCharacterCard,
   renderCharacterCardMarkup,
 } from "../src/rendering.js";
 import type { CharacterSnapshot } from "../src/types.js";
@@ -91,6 +92,15 @@ describe("rendering", () => {
     expect(freshMarkup).toContain("CURRENT");
     expect(staleMarkup).toContain("STALE");
     expect(freshMarkup).not.toBe(staleMarkup);
+  });
+
+  test("renders the character card through satori", async () => {
+    const attachment = await renderCharacterCard("110", "Paul-Paul Atreides", snapshot, false);
+
+    expect(attachment.kind).toBe("rendered");
+    expect(attachment.filename).toBe("character-110.png");
+    expect(attachment.contentType).toBe("image/png");
+    expect(attachment.data.length).toBeGreaterThan(0);
   });
 
   test("skips missing template ids", async () => {
