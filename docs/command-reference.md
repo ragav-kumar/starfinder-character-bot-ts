@@ -15,11 +15,11 @@ The bot exposes one slash-command group:
 ```
 
 Channel model:
-- use the configured bot channel for all commands
-- the authoritative dashboard post also lives in that same bot channel
+- commands work in any guild text channel where the bot is present
+- each channel has its own authoritative dashboard post and tracked roster
 
 Dashboard model:
-- each guild has one authoritative dashboard post
+- each channel has one authoritative dashboard post
 - the message body starts with a bot-readable metadata block
 - the dashboard post contains one composite dashboard image when one or more characters are tracked
 - the composite dashboard image uses a stable dashboard-oriented filename
@@ -79,7 +79,7 @@ Acknowledgement:
 
 ## `/characters clear`
 
-Removes all tracked characters for the current guild.
+Removes all tracked characters for the current channel.
 
 Behavior:
 - clears the tracked roster
@@ -94,7 +94,7 @@ Acknowledgement:
 
 ## `/characters list`
 
-Shows the currently tracked characters for the current guild.
+Shows the currently tracked characters for the current channel.
 
 Behavior:
 - returns each tracked character's display name and numeric ID when available
@@ -162,9 +162,8 @@ Acknowledgement:
 ## Validation And Channel Rules
 
 - `characterID` values must be numeric.
-- All commands must be run in the configured bot channel.
-- If a command is used in the wrong channel, the bot should acknowledge that and point to the correct one.
-- If bot-channel configuration is missing, the bot should acknowledge what is missing instead of failing silently.
+- Commands require a guild channel context.
+- Each channel manages its own dashboard and tracked roster independently from other channels in the same guild.
 - If a tagged dashboard post cannot be recovered, the bot may create a new clean authoritative post when a dashboard-affecting command runs.
 
 ---

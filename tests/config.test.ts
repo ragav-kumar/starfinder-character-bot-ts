@@ -8,21 +8,16 @@ describe("loadRuntimeConfig", () => {
     const config = loadRuntimeConfig({
       DISCORD_BOT_TOKEN: "token",
       STARFINDER_SITE_BASE_URL: "https://example.invalid/Character-sheet.php",
-      GUILD_CHANNEL_CONFIG: '{"1":{"botChannelId":"20"}}',
     });
 
     expect(config.discordBotToken).toBe("token");
     expect(config.siteBaseUrl).toBe("https://example.invalid/Character-sheet.php");
-    expect(config.guildChannelConfig["1"]).toEqual({
-      botChannelId: "20",
-    });
   });
 
   test("fails when DISCORD_BOT_TOKEN is missing", () => {
     expect(() =>
       loadRuntimeConfig({
         STARFINDER_SITE_BASE_URL: "https://example.invalid/Character-sheet.php",
-        GUILD_CHANNEL_CONFIG: '{"1":{"botChannelId":"20"}}',
       }),
     ).toThrow("DISCORD_BOT_TOKEN");
   });
@@ -31,19 +26,8 @@ describe("loadRuntimeConfig", () => {
     expect(() =>
       loadRuntimeConfig({
         DISCORD_BOT_TOKEN: "token",
-        GUILD_CHANNEL_CONFIG: '{"1":{"botChannelId":"20"}}',
       }),
     ).toThrow("STARFINDER_SITE_BASE_URL");
-  });
-
-  test("fails when botChannelId is missing", () => {
-    expect(() =>
-      loadRuntimeConfig({
-        DISCORD_BOT_TOKEN: "token",
-        STARFINDER_SITE_BASE_URL: "https://example.invalid/Character-sheet.php",
-        GUILD_CHANNEL_CONFIG: '{"1":{"dashboardChannelId":"20"}}',
-      }),
-    ).toThrow("botChannelId");
   });
 });
 

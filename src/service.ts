@@ -2,9 +2,8 @@ import { selectAuthoritativeDashboard, formatDashboardMetadata } from "./dashboa
 import { buildCharacterUrl, fetchCharacterPage, scrapeCharacterSheet } from "./fetcher.js";
 import { logException } from "./logging.js";
 import { diffSnapshots, renderCompositeDashboard } from "./rendering.js";
-import { GuildStateStore } from "./state.js";
+import { ChannelStateStore } from "./state.js";
 import type {
-  BotChannelConfig,
   CharacterSnapshot,
   CommandTarget,
   DashboardAttachment,
@@ -18,48 +17,38 @@ import type {
 interface ServiceOptions {
   config: RuntimeConfig;
   dashboardStore: DashboardStore;
-  stateStore?: GuildStateStore;
+  stateStore?: ChannelStateStore;
   fetchPage?: (url: string) => Promise<string>;
   now?: () => Date;
+}
+
+interface ChannelContext {
+  guildId: string;
+  channelId: string;
 }
 
 export class CharacterBotService {
   private readonly config: RuntimeConfig;
   private readonly dashboardStore: DashboardStore;
-  private readonly stateStore: GuildStateStore;
+  private readonly stateStore: ChannelStateStore;
   private readonly fetchPage: (url: string) => Promise<string>;
   private readonly now: () => Date;
 
   constructor(options: ServiceOptions) {
     this.config = options.config;
     this.dashboardStore = options.dashboardStore;
-    this.stateStore = options.stateStore ?? new GuildStateStore();
+    this.stateStore = options.stateStore ?? new ChannelStateStore();
     this.fetchPage = options.fetchPage ?? fetchCharacterPage;
     this.now = options.now ?? (() => new Date());
   }
 
-  getStateStore(): GuildStateStore {
+  getStateStore(): ChannelStateStore {
     return this.stateStore;
   }
 
-  async recoverConfiguredGuilds(): Promise<void> {
-    for (const guildId of Object.keys(this.config.guildChannelConfig)) {
-      await this.recoverDashboardState(guildId);
-    }
-  }
-
   async addCharacters(target: CommandTarget, rawCharacterIds: string): Promise<void> {
-    const guildId = this.requireGuild(target);
-    const channelConfig = await this.requireConfiguredChannel(guildId, target);
-    if (!channelConfig) {
-      return;
-    }
-    if (!this.isInBotChannel(target, channelConfig)) {
-      await this.sendWrongChannelAck(target, channelConfig.botChannelId);
-      return;
-    }
-
-    const state = await this.recoverDashboardState(guildId);
+    const context = this.requireChannelContext(target);
+    const state = await this.recoverDashboardState(context);
     const validIds: string[] = [];
     const invalidIds: string[] = [];
     for (const token of rawCharacterIds.split(/\s+/).filter(Boolean)) {
@@ -96,7 +85,8 @@ export class CharacterBotService {
         added.push(`${record.displayName} (${characterId})`);
       } catch (error) {
         logException("CharacterBotService.addCharacters", error, {
-          guildId,
+          guildId: context.guildId,
+          channelId: context.channelId,
           characterId,
           url: buildCharacterUrl(this.config.siteBaseUrl, characterId),
         });
@@ -105,7 +95,7 @@ export class CharacterBotService {
     }
 
     if (added.length > 0 || state.dashboardMessageId === null) {
-      await this.syncDashboard(guildId);
+      await this.syncDashboard(context);
     }
 
     await target.sendAck(this.buildSummary({ Added: added, "Already tracked": alreadyTracked, Failed: failed }), {
@@ -114,16 +104,7 @@ export class CharacterBotService {
   }
 
   async removeCharacter(target: CommandTarget, characterId: string): Promise<void> {
-    const guildId = this.requireGuild(target);
-    const channelConfig = await this.requireConfiguredChannel(guildId, target);
-    if (!channelConfig) {
-      return;
-    }
-    if (!this.isInBotChannel(target, channelConfig)) {
-      await this.sendWrongChannelAck(target, channelConfig.botChannelId);
-      return;
-    }
-
+    const context = this.requireChannelContext(target);
     if (!/^\d+$/.test(characterId)) {
       await target.sendAck(`Failed: ${characterId} (character IDs must be numeric)`, {
         ephemeral: target.supportsEphemeral,
@@ -131,7 +112,7 @@ export class CharacterBotService {
       return;
     }
 
-    const state = await this.recoverDashboardState(guildId);
+    const state = await this.recoverDashboardState(context);
     const record = state.tracked.get(characterId);
     if (!record) {
       await target.sendAck(`Not tracked: ${characterId}`, { ephemeral: target.supportsEphemeral });
@@ -142,7 +123,7 @@ export class CharacterBotService {
     state.lastSnapshots.delete(characterId);
     state.trackedOrder = state.trackedOrder.filter((id) => id !== characterId);
 
-    await this.syncDashboard(guildId);
+    await this.syncDashboard(context);
 
     await target.sendAck(`Removed: ${record.displayName} (${characterId})`, {
       ephemeral: target.supportsEphemeral,
@@ -150,17 +131,8 @@ export class CharacterBotService {
   }
 
   async clearCharacters(target: CommandTarget): Promise<void> {
-    const guildId = this.requireGuild(target);
-    const channelConfig = await this.requireConfiguredChannel(guildId, target);
-    if (!channelConfig) {
-      return;
-    }
-    if (!this.isInBotChannel(target, channelConfig)) {
-      await this.sendWrongChannelAck(target, channelConfig.botChannelId);
-      return;
-    }
-
-    const state = await this.recoverDashboardState(guildId);
+    const context = this.requireChannelContext(target);
+    const state = await this.recoverDashboardState(context);
     const trackedCount = state.tracked.size;
 
     state.tracked.clear();
@@ -171,7 +143,7 @@ export class CharacterBotService {
     state.pollingController?.cancel();
     state.pollingController = null;
 
-    await this.syncDashboard(guildId);
+    await this.syncDashboard(context);
 
     await target.sendAck(`Cleared ${trackedCount} tracked character(s). Automatic tracking stopped.`, {
       ephemeral: target.supportsEphemeral,
@@ -179,17 +151,8 @@ export class CharacterBotService {
   }
 
   async listCharacters(target: CommandTarget): Promise<void> {
-    const guildId = this.requireGuild(target);
-    const channelConfig = await this.requireConfiguredChannel(guildId, target);
-    if (!channelConfig) {
-      return;
-    }
-    if (!this.isInBotChannel(target, channelConfig)) {
-      await this.sendWrongChannelAck(target, channelConfig.botChannelId);
-      return;
-    }
-
-    const state = await this.recoverDashboardState(guildId);
+    const context = this.requireChannelContext(target);
+    const state = await this.recoverDashboardState(context);
     if (state.trackedOrder.length === 0) {
       await target.sendAck("No characters are currently being tracked.", {
         ephemeral: target.supportsEphemeral,
@@ -206,17 +169,8 @@ export class CharacterBotService {
   }
 
   async refreshCharacters(target: CommandTarget): Promise<void> {
-    const guildId = this.requireGuild(target);
-    const channelConfig = await this.requireConfiguredChannel(guildId, target);
-    if (!channelConfig) {
-      return;
-    }
-    if (!this.isInBotChannel(target, channelConfig)) {
-      await this.sendWrongChannelAck(target, channelConfig.botChannelId);
-      return;
-    }
-
-    const state = await this.recoverDashboardState(guildId);
+    const context = this.requireChannelContext(target);
+    const state = await this.recoverDashboardState(context);
     if (state.trackedOrder.length === 0) {
       await target.sendAck("No characters are currently being tracked.", {
         ephemeral: target.supportsEphemeral,
@@ -225,7 +179,7 @@ export class CharacterBotService {
       return;
     }
 
-    const result = await this.refreshTrackedCharacters(guildId, {
+    const result = await this.refreshTrackedCharacters(context, {
       userTriggered: true,
       announceChanges: false,
     });
@@ -244,17 +198,8 @@ export class CharacterBotService {
   }
 
   async startTracking(target: CommandTarget, pollingPeriod?: number | string): Promise<void> {
-    const guildId = this.requireGuild(target);
-    const channelConfig = await this.requireConfiguredChannel(guildId, target);
-    if (!channelConfig) {
-      return;
-    }
-    if (!this.isInBotChannel(target, channelConfig)) {
-      await this.sendWrongChannelAck(target, channelConfig.botChannelId);
-      return;
-    }
-
-    const state = await this.recoverDashboardState(guildId);
+    const context = this.requireChannelContext(target);
+    const state = await this.recoverDashboardState(context);
     let interval = state.pollingPeriodSeconds || 60;
     if (pollingPeriod !== undefined) {
       const parsed = Number.parseInt(String(pollingPeriod), 10);
@@ -286,7 +231,7 @@ export class CharacterBotService {
       state.pollingController?.cancel();
       state.pollingPeriodSeconds = interval;
       state.trackingEnabled = true;
-      state.pollingController = this.createPollingController(guildId);
+      state.pollingController = this.createPollingController(context);
       await target.sendAck(`Automatic tracking restarted with a ${interval}-second polling period.`, {
         ephemeral: target.supportsEphemeral,
       });
@@ -295,24 +240,15 @@ export class CharacterBotService {
 
     state.pollingPeriodSeconds = interval;
     state.trackingEnabled = true;
-    state.pollingController = this.createPollingController(guildId);
+    state.pollingController = this.createPollingController(context);
     await target.sendAck(`Automatic tracking started with a ${interval}-second polling period.`, {
       ephemeral: target.supportsEphemeral,
     });
   }
 
   async stopTracking(target: CommandTarget): Promise<void> {
-    const guildId = this.requireGuild(target);
-    const channelConfig = await this.requireConfiguredChannel(guildId, target);
-    if (!channelConfig) {
-      return;
-    }
-    if (!this.isInBotChannel(target, channelConfig)) {
-      await this.sendWrongChannelAck(target, channelConfig.botChannelId);
-      return;
-    }
-
-    const state = this.stateStore.get(guildId);
+    const context = this.requireChannelContext(target);
+    const state = this.stateStore.get(context.channelId);
     state.trackingEnabled = false;
     state.pollingController?.cancel();
     state.pollingController = null;
@@ -320,14 +256,14 @@ export class CharacterBotService {
   }
 
   async refreshTrackedCharacters(
-    guildId: string,
+    context: ChannelContext,
     options: {
       userTriggered: boolean;
       announceChanges: boolean;
     },
   ): Promise<{ changeSummaries: string[]; failures: string[]; dashboardUpdated: boolean }> {
     void options;
-    const state = await this.recoverDashboardState(guildId);
+    const state = await this.recoverDashboardState(context);
     const changeSummaries: string[] = [];
     const failures: string[] = [];
 
@@ -351,7 +287,8 @@ export class CharacterBotService {
         }
       } catch (error) {
         logException("CharacterBotService.refreshTrackedCharacters", error, {
-          guildId,
+          guildId: context.guildId,
+          channelId: context.channelId,
           characterId,
           url: buildCharacterUrl(this.config.siteBaseUrl, characterId),
         });
@@ -361,7 +298,7 @@ export class CharacterBotService {
       }
     }
 
-    await this.syncDashboard(guildId);
+    await this.syncDashboard(context);
 
     return {
       changeSummaries,
@@ -370,12 +307,8 @@ export class CharacterBotService {
     };
   }
 
-  private async recoverDashboardState(guildId: string) {
-    const state = this.stateStore.get(guildId);
-    const channelConfig = this.config.guildChannelConfig[guildId];
-    if (!channelConfig) {
-      return state;
-    }
+  private async recoverDashboardState(context: ChannelContext) {
+    const state = this.stateStore.get(context.channelId);
 
     const needsRecovery =
       state.dashboardMessageId === null ||
@@ -384,12 +317,13 @@ export class CharacterBotService {
       return state;
     }
 
-    const messages = await this.dashboardStore.listChannelMessages(channelConfig.botChannelId);
-    const authoritative = selectAuthoritativeDashboard(guildId, messages);
+    const messages = await this.dashboardStore.listChannelMessages(context.channelId);
+    const authoritative = selectAuthoritativeDashboard(context.guildId, context.channelId, messages);
     if (!authoritative) {
       state.dashboardMessageId = null;
       state.tracked.clear();
       state.trackedOrder = [];
+      state.lastSnapshots.clear();
       return state;
     }
 
@@ -418,15 +352,11 @@ export class CharacterBotService {
     return state;
   }
 
-  private async syncDashboard(guildId: string): Promise<void> {
-    const state = this.stateStore.get(guildId);
-    const channelConfig = this.config.guildChannelConfig[guildId];
-    if (!channelConfig) {
-      throw new Error("This server is missing bot channel configuration.");
-    }
-
+  private async syncDashboard(context: ChannelContext): Promise<void> {
+    const state = this.stateStore.get(context.channelId);
     const metadata: DashboardMetadata = {
-      guildId,
+      guildId: context.guildId,
+      channelId: context.channelId,
       trackedCharacterIds: [...state.trackedOrder],
       updatedAt: this.now(),
     };
@@ -436,13 +366,13 @@ export class CharacterBotService {
 
     const result =
       state.dashboardMessageId === null
-        ? await this.dashboardStore.createMessage(channelConfig.botChannelId, content, attachments)
-        : await this.dashboardStore.editMessage(channelConfig.botChannelId, state.dashboardMessageId, content, attachments);
+        ? await this.dashboardStore.createMessage(context.channelId, content, attachments)
+        : await this.dashboardStore.editMessage(context.channelId, state.dashboardMessageId, content, attachments);
 
     state.dashboardMessageId = result.id;
   }
 
-  private async buildDashboardAttachments(state: ReturnType<GuildStateStore["get"]>): Promise<DashboardAttachment[]> {
+  private async buildDashboardAttachments(state: ReturnType<ChannelStateStore["get"]>): Promise<DashboardAttachment[]> {
     if (state.trackedOrder.length === 0) {
       return [];
     }
@@ -480,7 +410,7 @@ export class CharacterBotService {
     return [await renderCompositeDashboard(cards)];
   }
 
-  private buildDashboardBody(state: ReturnType<GuildStateStore["get"]>): string {
+  private buildDashboardBody(state: ReturnType<ChannelStateStore["get"]>): string {
     if (state.trackedOrder.length === 0) {
       return "No characters are currently tracked.";
     }
@@ -496,14 +426,14 @@ export class CharacterBotService {
     return [trackingStatus, `Tracked characters: ${tracked.join(", ")}`].join("\n");
   }
 
-  private createPollingController(guildId: string): PollingController {
-    const state = this.stateStore.get(guildId);
+  private createPollingController(context: ChannelContext): PollingController {
+    const state = this.stateStore.get(context.channelId);
     const handle = setInterval(() => {
-      const freshState = this.stateStore.get(guildId);
+      const freshState = this.stateStore.get(context.channelId);
       if (!freshState.trackingEnabled || freshState.trackedOrder.length === 0) {
         return;
       }
-      void this.refreshTrackedCharacters(guildId, {
+      void this.refreshTrackedCharacters(context, {
         userTriggered: false,
         announceChanges: false,
       });
@@ -522,32 +452,17 @@ export class CharacterBotService {
     return scrapeCharacterSheet(html, { characterId, now: this.now() });
   }
 
-  private requireGuild(target: CommandTarget): string {
+  private requireChannelContext(target: CommandTarget): ChannelContext {
     if (!target.guildId) {
       throw new Error("This command requires a guild context.");
     }
-    return target.guildId;
-  }
-
-  private async requireConfiguredChannel(guildId: string, target: CommandTarget): Promise<BotChannelConfig | null> {
-    const channelConfig = this.config.guildChannelConfig[guildId];
-    if (!channelConfig) {
-      await target.sendAck("This server is missing bot channel configuration. Please configure botChannelId.", {
-        ephemeral: target.supportsEphemeral,
-      });
-      return null;
+    if (!target.channelId) {
+      throw new Error("This command requires a channel context.");
     }
-    return channelConfig;
-  }
-
-  private isInBotChannel(target: CommandTarget, channelConfig: BotChannelConfig): boolean {
-    return target.channelId === channelConfig.botChannelId;
-  }
-
-  private async sendWrongChannelAck(target: CommandTarget, channelId: string): Promise<void> {
-    await target.sendAck(`This command only works in the configured bot channel (<#${channelId}>).`, {
-      ephemeral: target.supportsEphemeral,
-    });
+    return {
+      guildId: target.guildId,
+      channelId: target.channelId,
+    };
   }
 
   private buildSummary(parts: Record<"Added" | "Already tracked" | "Failed", string[]>): string {

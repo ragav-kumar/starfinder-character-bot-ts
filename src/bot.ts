@@ -101,8 +101,8 @@ function toDiscordFiles(attachments: DashboardAttachment[]): AttachmentBuilder[]
     .filter((attachment): attachment is Extract<DashboardAttachment, { kind: "rendered" }> => attachment.kind === "rendered")
     .map((attachment) =>
       new AttachmentBuilder(attachment.data, {
-      name: attachment.filename,
-      description: `Starfinder character ${attachment.characterId}`,
+        name: attachment.filename,
+        description: `Starfinder character ${attachment.characterId}`,
       }),
     );
 }
@@ -218,7 +218,6 @@ export function createDiscordClient(config: RuntimeConfig, service?: CharacterBo
       return;
     }
     await client.application.commands.set(commandDefinitions);
-    await resolvedService.recoverConfiguredGuilds();
     console.log(`Logged in as ${client.user?.tag ?? "unknown"}`);
   });
 

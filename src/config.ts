@@ -1,6 +1,6 @@
 import { config as loadDotEnv } from "dotenv";
 
-import type { BotChannelConfig, RuntimeConfig } from "./types.js";
+import type { RuntimeConfig } from "./types.js";
 
 let loaded = false;
 
@@ -19,45 +19,11 @@ function requireEnv(name: string, env: NodeJS.ProcessEnv): string {
   return value;
 }
 
-function parseGuildChannelConfig(raw: string): Record<string, BotChannelConfig> {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (error) {
-    throw new Error(`GUILD_CHANNEL_CONFIG must be valid JSON: ${String(error)}`, {
-      cause: error,
-    });
-  }
-
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("GUILD_CHANNEL_CONFIG must be a JSON object keyed by guild ID.");
-  }
-
-  const result: Record<string, BotChannelConfig> = {};
-
-  for (const [guildId, value] of Object.entries(parsed)) {
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
-      throw new Error(`GUILD_CHANNEL_CONFIG entry for guild ${guildId} must be an object.`);
-    }
-
-    const botChannelId = String((value as Record<string, unknown>).botChannelId ?? "").trim();
-
-    if (!botChannelId) {
-      throw new Error(`GUILD_CHANNEL_CONFIG entry for guild ${guildId} must include botChannelId.`);
-    }
-
-    result[guildId] = { botChannelId };
-  }
-
-  return result;
-}
-
 export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env): RuntimeConfig {
   ensureDotEnvLoaded();
 
   const discordBotToken = requireEnv("DISCORD_BOT_TOKEN", env);
   const siteBaseUrl = requireEnv("STARFINDER_SITE_BASE_URL", env);
-  const guildChannelConfig = parseGuildChannelConfig(requireEnv("GUILD_CHANNEL_CONFIG", env));
 
   try {
     new URL(siteBaseUrl);
@@ -68,6 +34,5 @@ export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env): Runtime
   return {
     discordBotToken,
     siteBaseUrl,
-    guildChannelConfig,
   };
 }

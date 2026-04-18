@@ -14,7 +14,7 @@ vi.mock("../src/rendering.js", () => ({
 
 import { formatDashboardMetadata } from "../src/dashboard.js";
 import { CharacterBotService } from "../src/service.js";
-import { GuildStateStore } from "../src/state.js";
+import { ChannelStateStore } from "../src/state.js";
 import type {
   CommandTarget,
   DashboardAttachment,
@@ -105,15 +105,10 @@ class FakeTarget implements CommandTarget {
 const config: RuntimeConfig = {
   discordBotToken: "token",
   siteBaseUrl: "https://private.example.test/Character-sheet.php",
-  guildChannelConfig: {
-    "1": {
-      botChannelId: "200",
-    },
-  },
 };
 
 describe("CharacterBotService", () => {
-  let stateStore: GuildStateStore;
+  let stateStore: ChannelStateStore;
   let fetchPage: Mock<(url: string) => Promise<string>>;
   let dashboardStore: FakeDashboardStore;
   let service: CharacterBotService;
@@ -121,7 +116,7 @@ describe("CharacterBotService", () => {
 
   beforeEach(() => {
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    stateStore = new GuildStateStore();
+    stateStore = new ChannelStateStore();
     dashboardStore = new FakeDashboardStore();
     fetchPage = vi.fn(async (url: string) => {
       const characterId = new URL(url).searchParams.get("characterID");
@@ -148,7 +143,7 @@ describe("CharacterBotService", () => {
 
     await service.addCharacters(target, "110 245");
 
-    const state = stateStore.get("1");
+    const state = stateStore.get("200");
     expect(state.trackedOrder).toEqual(["110", "245"]);
     expect(dashboardStore.created).toHaveLength(1);
     expect(dashboardStore.created[0]?.attachments).toHaveLength(1);
@@ -166,12 +161,12 @@ describe("CharacterBotService", () => {
     expect(target.acks.at(-1)?.content).toContain("abc");
   });
 
-  test("commands reject the wrong bot channel", async () => {
+  test("commands work from any guild channel without prior configuration", async () => {
     const target = new FakeTarget("1", "999");
 
     await service.listCharacters(target);
 
-    expect(target.acks.at(-1)?.content).toContain("<#200>");
+    expect(target.acks.at(-1)?.content).toContain("No characters are currently being tracked.");
   });
 
   test("remove updates the authoritative dashboard", async () => {
@@ -180,7 +175,7 @@ describe("CharacterBotService", () => {
 
     await service.removeCharacter(target, "110");
 
-    expect(stateStore.get("1").trackedOrder).toEqual(["245"]);
+    expect(stateStore.get("200").trackedOrder).toEqual(["245"]);
     expect(dashboardStore.edited.at(-1)?.attachments).toHaveLength(1);
     expect(dashboardStore.edited.at(-1)?.attachments[0]?.filename).toBe("starfinder-dashboard.png");
     expect(target.acks.at(-1)?.content).toContain("Removed:");
@@ -190,7 +185,7 @@ describe("CharacterBotService", () => {
     const target = new FakeTarget("1", "200");
     await service.addCharacters(target, "110 245");
 
-    const state = stateStore.get("1");
+    const state = stateStore.get("200");
     state.trackingEnabled = true;
     state.pollingController = { cancel: vi.fn() };
 
@@ -210,6 +205,7 @@ describe("CharacterBotService", () => {
         channelId: "200",
         content: `${formatDashboardMetadata({
           guildId: "1",
+          channelId: "200",
           trackedCharacterIds: ["110", "245"],
           updatedAt: new Date("2026-04-17T18:00:00Z"),
         })}\n\nTracked characters: recovered`,
@@ -222,7 +218,7 @@ describe("CharacterBotService", () => {
     const restartedService = new CharacterBotService({
       config,
       dashboardStore,
-      stateStore: new GuildStateStore(),
+      stateStore: new ChannelStateStore(),
       fetchPage,
     });
     const target = new FakeTarget("1", "200");
@@ -263,7 +259,7 @@ describe("CharacterBotService", () => {
 
     await service.refreshCharacters(target);
 
-    expect(stateStore.get("1").tracked.get("110")?.stale).toBe(true);
+    expect(stateStore.get("200").tracked.get("110")?.stale).toBe(true);
     expect(dashboardStore.edited.at(-1)?.attachments).toHaveLength(1);
   });
 
@@ -290,7 +286,7 @@ describe("CharacterBotService", () => {
 
     await service.refreshCharacters(target);
 
-    expect(stateStore.get("1").tracked.get("110")?.stale).toBe(true);
+    expect(stateStore.get("200").tracked.get("110")?.stale).toBe(true);
     expect(dashboardStore.edited.at(-1)?.attachments).toHaveLength(1);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining("CharacterBotService.refreshTrackedCharacters"),
@@ -308,7 +304,7 @@ describe("CharacterBotService", () => {
 
     await service.startTracking(target, 30);
 
-    const state = stateStore.get("1");
+    const state = stateStore.get("200");
     expect(state.trackingEnabled).toBe(true);
     expect(state.pollingPeriodSeconds).toBe(30);
     expect(state.pollingController).not.toBeNull();
@@ -343,25 +339,20 @@ describe("CharacterBotService", () => {
 
     await service.addCharacters(target, "404");
 
-    expect(stateStore.get("1").tracked.has("404")).toBe(false);
+    expect(stateStore.get("200").tracked.has("404")).toBe(false);
     expect(target.acks.at(-1)?.content).toContain("Failed: 404 (page not reachable)");
   });
 
-  test("missing channel setup is acknowledged", async () => {
-    const noChannelService = new CharacterBotService({
-      config: {
-        ...config,
-        guildChannelConfig: {},
-      },
-      dashboardStore,
-      stateStore,
-      fetchPage,
-    });
-    const target = new FakeTarget("1", "200");
+  test("channels in the same guild keep independent state", async () => {
+    const firstChannel = new FakeTarget("1", "200");
+    const secondChannel = new FakeTarget("1", "201");
 
-    await noChannelService.listCharacters(target);
+    await service.addCharacters(firstChannel, "110");
+    await service.addCharacters(secondChannel, "245");
 
-    expect(target.acks.at(-1)?.content).toContain("missing bot channel configuration");
+    expect(stateStore.get("200").trackedOrder).toEqual(["110"]);
+    expect(stateStore.get("201").trackedOrder).toEqual(["245"]);
+    expect(dashboardStore.created.map((message) => message.channelId)).toEqual(["200", "201"]);
   });
 
   test("multiple tagged posts recover from the most recently updated valid one", async () => {
@@ -371,6 +362,7 @@ describe("CharacterBotService", () => {
         channelId: "200",
         content: formatDashboardMetadata({
           guildId: "1",
+          channelId: "200",
           trackedCharacterIds: ["110"],
           updatedAt: new Date("2026-04-17T18:00:00Z"),
         }),
@@ -382,6 +374,7 @@ describe("CharacterBotService", () => {
         channelId: "200",
         content: formatDashboardMetadata({
           guildId: "1",
+          channelId: "200",
           trackedCharacterIds: ["245"],
           updatedAt: new Date("2026-04-17T19:00:00Z"),
         }),
@@ -392,7 +385,7 @@ describe("CharacterBotService", () => {
     const restartedService = new CharacterBotService({
       config,
       dashboardStore,
-      stateStore: new GuildStateStore(),
+      stateStore: new ChannelStateStore(),
       fetchPage,
     });
     const target = new FakeTarget("1", "200");
@@ -410,6 +403,7 @@ describe("CharacterBotService", () => {
         channelId: "200",
         content: formatDashboardMetadata({
           guildId: "1",
+          channelId: "200",
           trackedCharacterIds: ["110", "245"],
           updatedAt: new Date("2026-04-17T18:00:00Z"),
         }),
@@ -420,7 +414,7 @@ describe("CharacterBotService", () => {
     const restartedService = new CharacterBotService({
       config,
       dashboardStore,
-      stateStore: new GuildStateStore(),
+      stateStore: new ChannelStateStore(),
       fetchPage,
     });
     const target = new FakeTarget("1", "200");
@@ -430,5 +424,48 @@ describe("CharacterBotService", () => {
     expect(target.acks.at(-1)?.content).toContain("110");
     expect(target.acks.at(-1)?.content).toContain("245");
     expect(target.acks.at(-1)?.content).not.toContain("999");
+  });
+
+  test("recovery ignores dashboards from other channels in the same guild", async () => {
+    dashboardStore.seed("200", [
+      {
+        id: "channel-200",
+        channelId: "200",
+        content: formatDashboardMetadata({
+          guildId: "1",
+          channelId: "200",
+          trackedCharacterIds: ["110"],
+          updatedAt: new Date("2026-04-17T18:00:00Z"),
+        }),
+        attachments: [{ kind: "existing", id: "x1", filename: "starfinder-dashboard.png" }],
+        createdAt: new Date("2026-04-17T18:00:00Z"),
+      },
+    ]);
+    dashboardStore.seed("201", [
+      {
+        id: "channel-201",
+        channelId: "201",
+        content: formatDashboardMetadata({
+          guildId: "1",
+          channelId: "201",
+          trackedCharacterIds: ["245"],
+          updatedAt: new Date("2026-04-17T19:00:00Z"),
+        }),
+        attachments: [{ kind: "existing", id: "x2", filename: "starfinder-dashboard.png" }],
+        createdAt: new Date("2026-04-17T19:00:00Z"),
+      },
+    ]);
+    const restartedService = new CharacterBotService({
+      config,
+      dashboardStore,
+      stateStore: new ChannelStateStore(),
+      fetchPage,
+    });
+    const target = new FakeTarget("1", "201");
+
+    await restartedService.listCharacters(target);
+
+    expect(target.acks.at(-1)?.content).toContain("245");
+    expect(target.acks.at(-1)?.content).not.toContain("110");
   });
 });

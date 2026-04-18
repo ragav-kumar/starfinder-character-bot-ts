@@ -48,14 +48,9 @@ export interface CharacterSnapshot {
   lastUpdatedAt: Date;
 }
 
-export interface BotChannelConfig {
-  botChannelId: string;
-}
-
 export interface RuntimeConfig {
   discordBotToken: string;
   siteBaseUrl: string;
-  guildChannelConfig: Record<string, BotChannelConfig>;
 }
 
 export interface CommandTarget {
@@ -82,6 +77,7 @@ export interface PollingController {
 
 export interface DashboardMetadata {
   guildId: string;
+  channelId: string;
   trackedCharacterIds: string[];
   updatedAt: Date;
 }
@@ -129,7 +125,7 @@ export interface TrackedCharacter {
   lastRefreshError: string | null;
 }
 
-export interface GuildState {
+export interface ChannelState {
   tracked: Map<string, TrackedCharacter>;
   trackingEnabled: boolean;
   pollingPeriodSeconds: number;

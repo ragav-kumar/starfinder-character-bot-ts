@@ -18,6 +18,7 @@ describe("dashboard metadata", () => {
     const metadata = parseDashboardMetadata(
       formatDashboardMetadata({
         guildId: "1",
+        channelId: "200",
         trackedCharacterIds: ["110", "245"],
         updatedAt: new Date("2026-04-17T18:00:00Z"),
       }),
@@ -25,6 +26,7 @@ describe("dashboard metadata", () => {
 
     expect(metadata).toEqual({
       guildId: "1",
+      channelId: "200",
       trackedCharacterIds: ["110", "245"],
       updatedAt: new Date("2026-04-17T18:00:00.000Z"),
     });
@@ -34,6 +36,7 @@ describe("dashboard metadata", () => {
     expect(
       parseDashboardMetadata(`${DASHBOARD_MARKER}
 guildId: 1
+channelId: 200
 trackedCharacterIds: abc
 updatedAt: 2026-04-17T18:00:00Z`),
     ).toBeNull();
@@ -44,6 +47,7 @@ updatedAt: 2026-04-17T18:00:00Z`),
       "1",
       formatDashboardMetadata({
         guildId: "guild",
+        channelId: "200",
         trackedCharacterIds: ["110"],
         updatedAt: new Date("2026-04-17T18:00:00Z"),
       }),
@@ -52,6 +56,7 @@ updatedAt: 2026-04-17T18:00:00Z`),
       "2",
       formatDashboardMetadata({
         guildId: "guild",
+        channelId: "200",
         trackedCharacterIds: ["245"],
         updatedAt: new Date("2026-04-17T19:00:00Z"),
       }),
@@ -60,12 +65,22 @@ updatedAt: 2026-04-17T18:00:00Z`),
       "3",
       formatDashboardMetadata({
         guildId: "other",
+        channelId: "200",
         trackedCharacterIds: ["999"],
         updatedAt: new Date("2026-04-17T20:00:00Z"),
       }),
     );
+    const wrongChannel = message(
+      "4",
+      formatDashboardMetadata({
+        guildId: "guild",
+        channelId: "201",
+        trackedCharacterIds: ["777"],
+        updatedAt: new Date("2026-04-17T21:00:00Z"),
+      }),
+    );
 
-    const selected = selectAuthoritativeDashboard("guild", [older, newer, wrongGuild]);
+    const selected = selectAuthoritativeDashboard("guild", "200", [older, newer, wrongGuild, wrongChannel]);
 
     expect(selected?.message.id).toBe("2");
     expect(selected?.metadata.trackedCharacterIds).toEqual(["245"]);

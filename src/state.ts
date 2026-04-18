@@ -1,8 +1,8 @@
-import type { GuildState } from "./types.js";
+import type { ChannelState } from "./types.js";
 
 const DEFAULT_POLLING_PERIOD_SECONDS = 60;
 
-function createGuildState(): GuildState {
+function createChannelState(): ChannelState {
   return {
     tracked: new Map(),
     trackingEnabled: false,
@@ -14,17 +14,17 @@ function createGuildState(): GuildState {
   };
 }
 
-export class GuildStateStore {
-  private readonly states = new Map<string, GuildState>();
+export class ChannelStateStore {
+  private readonly states = new Map<string, ChannelState>();
 
-  get(guildId: string): GuildState {
-    const existing = this.states.get(guildId);
+  get(channelId: string): ChannelState {
+    const existing = this.states.get(channelId);
     if (existing) {
       return existing;
     }
 
-    const created = createGuildState();
-    this.states.set(guildId, created);
+    const created = createChannelState();
+    this.states.set(channelId, created);
     return created;
   }
 

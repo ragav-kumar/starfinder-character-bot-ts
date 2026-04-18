@@ -12,11 +12,11 @@ Create a `.env` file with:
 ```dotenv
 DISCORD_BOT_TOKEN=your-discord-token
 STARFINDER_SITE_BASE_URL=https://your-private-site/Starfinder/Character-sheet.php
-GUILD_CHANNEL_CONFIG={"123456789012345678":{"botChannelId":"222222222222222222"}}
 ```
 
-`GUILD_CHANNEL_CONFIG` is a JSON object keyed by guild ID. Each value must
-include `botChannelId`.
+The bot now works in any guild text channel where it has permission to view the
+channel, send messages, attach files, and read message history. Each channel
+maintains its own tracked roster, polling state, and persistent dashboard post.
 
 ## Scripts
 
