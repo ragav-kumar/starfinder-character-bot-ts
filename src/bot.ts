@@ -1,15 +1,24 @@
 import {
+  AttachmentBuilder,
   Client,
   GatewayIntentBits,
   MessageFlags,
   SlashCommandBuilder,
+  type Attachment,
   type ChatInputCommandInteraction,
   type ClientOptions,
   type Message,
 } from "discord.js";
 
 import { CharacterBotService } from "./service.js";
-import type { CommandTarget, PanelMessageHandle, RuntimeConfig, TemporaryMessageHandle } from "./types.js";
+import type {
+  CommandTarget,
+  DashboardAttachment,
+  DashboardMessageSnapshot,
+  DashboardStore,
+  ExistingDashboardAttachment,
+  RuntimeConfig,
+} from "./types.js";
 
 const commandDefinitions = [
   new SlashCommandBuilder()
@@ -48,64 +57,111 @@ const commandDefinitions = [
     ),
 ].map((command) => command.toJSON());
 
-type SendableChannel = {
-  send(content: string): Promise<Message>;
+type SendableDashboardChannel = {
+  send(payload: {
+    content: string;
+    files?: AttachmentBuilder[];
+    attachments?: Array<{ id: string; filename: string }>;
+  }): Promise<Message>;
+  messages: {
+    fetch(options?: { limit?: number } | string): Promise<Map<string, Message> | Message>;
+  };
 };
 
-function asSendableChannel(channel: unknown): SendableChannel | null {
+function isTextChannel(channel: unknown): channel is SendableDashboardChannel {
   if (!channel || typeof channel !== "object") {
-    return null;
+    return false;
   }
-  const maybeChannel = channel as SendableChannel;
-  if (typeof maybeChannel.send !== "function") {
-    return null;
-  }
-  return maybeChannel;
+
+  const maybeChannel = channel as { send?: unknown; messages?: unknown };
+  return typeof maybeChannel.send === "function" && typeof maybeChannel.messages === "object";
 }
 
-class DiscordTemporaryMessage implements TemporaryMessageHandle {
-  readonly id: string;
-  private readonly message: Message;
-
-  constructor(message: Message) {
-    this.id = message.id;
-    this.message = message;
-  }
-
-  async delete(): Promise<void> {
-    await this.message.delete();
-  }
+function toExistingAttachment(attachment: Attachment): ExistingDashboardAttachment {
+  return {
+    kind: "existing",
+    id: attachment.id,
+    filename: attachment.name,
+  };
 }
 
-class DiscordPanelMessage implements PanelMessageHandle {
-  readonly id: string;
-  readonly channelId: string;
-  readonly channel;
-  content: string;
-  private readonly message: Message;
+function toDashboardMessageSnapshot(message: Message): DashboardMessageSnapshot {
+  return {
+    id: message.id,
+    channelId: message.channelId,
+    content: message.content,
+    attachments: [...message.attachments.values()].map(toExistingAttachment),
+    createdAt: message.editedAt ?? message.createdAt,
+  };
+}
 
-  constructor(message: Message) {
-    this.id = message.id;
-    this.channelId = message.channelId;
-    this.channel = {
-      id: message.channelId,
-      send: async (content: string) => {
-        const sendableChannel = message.channel as unknown as SendableChannel;
-        const sent = await sendableChannel.send(content);
-        return new DiscordTemporaryMessage(sent);
-      },
-    };
-    this.content = message.content;
-    this.message = message;
+function toDiscordFiles(attachments: DashboardAttachment[]): AttachmentBuilder[] {
+  return attachments
+    .filter((attachment): attachment is Extract<DashboardAttachment, { kind: "rendered" }> => attachment.kind === "rendered")
+    .map((attachment) =>
+      new AttachmentBuilder(attachment.data, {
+      name: attachment.filename,
+      description: `Starfinder character ${attachment.characterId}`,
+      }),
+    );
+}
+
+class DiscordDashboardStore implements DashboardStore {
+  constructor(private readonly client: Client) {}
+
+  async listChannelMessages(channelId: string): Promise<DashboardMessageSnapshot[]> {
+    const channel = await this.requireTextChannel(channelId);
+    const messages = await channel.messages.fetch({ limit: 100 });
+    if (!(messages instanceof Map)) {
+      return [toDashboardMessageSnapshot(messages)];
+    }
+    return [...messages.values()].map(toDashboardMessageSnapshot);
   }
 
-  async edit(content: string): Promise<void> {
-    const edited = await this.message.edit(content);
-    this.content = edited.content;
+  async createMessage(
+    channelId: string,
+    content: string,
+    attachments: DashboardAttachment[],
+  ): Promise<DashboardMessageSnapshot> {
+    const channel = await this.requireTextChannel(channelId);
+    const message = await channel.send({
+      content,
+      files: toDiscordFiles(attachments),
+    });
+    return toDashboardMessageSnapshot(message);
   }
 
-  async delete(): Promise<void> {
-    await this.message.delete();
+  async editMessage(
+    channelId: string,
+    messageId: string,
+    content: string,
+    attachments: DashboardAttachment[],
+  ): Promise<DashboardMessageSnapshot> {
+    const channel = await this.requireTextChannel(channelId);
+    const fetched = await channel.messages.fetch(messageId);
+    if (fetched instanceof Map) {
+      throw new Error(`Message ${messageId} could not be fetched.`);
+    }
+    const message = fetched;
+    const edited = await message.edit({
+      content,
+      files: toDiscordFiles(attachments),
+      attachments: attachments
+        .filter((attachment): attachment is ExistingDashboardAttachment => attachment.kind === "existing")
+        .map((attachment) => ({
+          id: attachment.id,
+          filename: attachment.filename,
+        })),
+    });
+    return toDashboardMessageSnapshot(edited);
+  }
+
+  private async requireTextChannel(channelId: string): Promise<SendableDashboardChannel> {
+    const channel = await this.client.channels.fetch(channelId);
+    if (!isTextChannel(channel)) {
+      throw new Error(`Channel ${channelId} is not a sendable text channel.`);
+    }
+    return channel;
   }
 }
 
@@ -114,14 +170,9 @@ class DiscordInteractionTarget implements CommandTarget {
   readonly channelId: string | null;
   readonly supportsEphemeral = true;
 
-  private readonly interaction: ChatInputCommandInteraction;
-  private readonly dashboardChannel: SendableChannel | null;
-
-  constructor(interaction: ChatInputCommandInteraction, dashboardChannel: SendableChannel | null) {
-    this.interaction = interaction;
+  constructor(private readonly interaction: ChatInputCommandInteraction) {
     this.guildId = interaction.guildId;
     this.channelId = interaction.channelId;
-    this.dashboardChannel = dashboardChannel;
   }
 
   async sendAck(
@@ -148,28 +199,21 @@ class DiscordInteractionTarget implements CommandTarget {
       }
     }
   }
-
-  async sendPanel(content: string): Promise<PanelMessageHandle> {
-    if (!this.dashboardChannel) {
-      throw new Error("Dashboard channel is not configured or not sendable.");
-    }
-
-    const sent = await this.dashboardChannel.send(content);
-    return new DiscordPanelMessage(sent);
-  }
 }
 
-export function createDiscordClient(config: RuntimeConfig, service = new CharacterBotService({ config })): Client {
+export function createDiscordClient(config: RuntimeConfig, service?: CharacterBotService): Client {
   const clientOptions: ClientOptions = {
     intents: [GatewayIntentBits.Guilds],
   };
   const client = new Client(clientOptions);
+  const resolvedService = service ?? new CharacterBotService({ config, dashboardStore: new DiscordDashboardStore(client) });
 
   client.once("ready", async () => {
     if (!client.application) {
       return;
     }
     await client.application.commands.set(commandDefinitions);
+    await resolvedService.recoverConfiguredGuilds();
     console.log(`Logged in as ${client.user?.tag ?? "unknown"}`);
   });
 
@@ -178,12 +222,7 @@ export function createDiscordClient(config: RuntimeConfig, service = new Charact
       return;
     }
 
-    const guildId = interaction.guildId;
-    const dashboardChannelId = guildId ? config.guildChannelConfig[guildId]?.dashboardChannelId : undefined;
-    const dashboardChannel = dashboardChannelId
-      ? asSendableChannel(await interaction.client.channels.fetch(dashboardChannelId).catch(() => null))
-      : null;
-    const target = new DiscordInteractionTarget(interaction, dashboardChannel);
+    const target = new DiscordInteractionTarget(interaction);
 
     try {
       const group = interaction.options.getSubcommandGroup(false);
@@ -191,25 +230,25 @@ export function createDiscordClient(config: RuntimeConfig, service = new Charact
       const key = group ? `${group}/${subcommand}` : subcommand;
       switch (key) {
         case "tracking/start":
-          await service.startTracking(target, interaction.options.getInteger("pollingperiod", false) ?? undefined);
+          await resolvedService.startTracking(target, interaction.options.getInteger("pollingperiod", false) ?? undefined);
           return;
         case "tracking/stop":
-          await service.stopTracking(target);
+          await resolvedService.stopTracking(target);
           return;
         case "add":
-          await service.addCharacters(target, interaction.options.getString("characterids", true));
+          await resolvedService.addCharacters(target, interaction.options.getString("characterids", true));
           return;
         case "remove":
-          await service.removeCharacter(target, interaction.options.getString("characterid", true));
+          await resolvedService.removeCharacter(target, interaction.options.getString("characterid", true));
           return;
         case "clear":
-          await service.clearCharacters(target);
+          await resolvedService.clearCharacters(target);
           return;
         case "list":
-          await service.listCharacters(target);
+          await resolvedService.listCharacters(target);
           return;
         case "refresh":
-          await service.refreshCharacters(target);
+          await resolvedService.refreshCharacters(target);
           return;
       }
     } catch (error) {

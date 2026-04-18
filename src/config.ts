@@ -1,6 +1,6 @@
 import { config as loadDotEnv } from "dotenv";
 
-import type { GuildChannels, RuntimeConfig } from "./types.js";
+import type { BotChannelConfig, RuntimeConfig } from "./types.js";
 
 let loaded = false;
 
@@ -19,7 +19,7 @@ function requireEnv(name: string, env: NodeJS.ProcessEnv): string {
   return value;
 }
 
-function parseGuildChannelConfig(raw: string): Record<string, GuildChannels> {
+function parseGuildChannelConfig(raw: string): Record<string, BotChannelConfig> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -33,23 +33,20 @@ function parseGuildChannelConfig(raw: string): Record<string, GuildChannels> {
     throw new Error("GUILD_CHANNEL_CONFIG must be a JSON object keyed by guild ID.");
   }
 
-  const result: Record<string, GuildChannels> = {};
+  const result: Record<string, BotChannelConfig> = {};
 
   for (const [guildId, value] of Object.entries(parsed)) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
       throw new Error(`GUILD_CHANNEL_CONFIG entry for guild ${guildId} must be an object.`);
     }
 
-    const configChannelId = String((value as Record<string, unknown>).configChannelId ?? "").trim();
-    const dashboardChannelId = String((value as Record<string, unknown>).dashboardChannelId ?? "").trim();
+    const botChannelId = String((value as Record<string, unknown>).botChannelId ?? "").trim();
 
-    if (!configChannelId || !dashboardChannelId) {
-      throw new Error(
-        `GUILD_CHANNEL_CONFIG entry for guild ${guildId} must include configChannelId and dashboardChannelId.`,
-      );
+    if (!botChannelId) {
+      throw new Error(`GUILD_CHANNEL_CONFIG entry for guild ${guildId} must include botChannelId.`);
     }
 
-    result[guildId] = { configChannelId, dashboardChannelId };
+    result[guildId] = { botChannelId };
   }
 
   return result;

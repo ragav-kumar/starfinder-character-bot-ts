@@ -1,74 +1,93 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { Mock } from "vitest";
 
+import { formatDashboardMetadata } from "../src/dashboard.js";
 import { CharacterBotService } from "../src/service.js";
 import { GuildStateStore } from "../src/state.js";
-import type { CommandTarget, PanelMessageHandle, RuntimeConfig, TemporaryMessageHandle } from "../src/types.js";
+import type {
+  CommandTarget,
+  DashboardAttachment,
+  DashboardMessageSnapshot,
+  DashboardStore,
+  ExistingDashboardAttachment,
+  RuntimeConfig,
+} from "../src/types.js";
 
-class FakeTemporaryMessage implements TemporaryMessageHandle {
-  deleted = false;
-  constructor(public readonly id: string) {}
-  async delete(): Promise<void> {
-    this.deleted = true;
-  }
-}
+class FakeDashboardStore implements DashboardStore {
+  readonly created: DashboardMessageSnapshot[] = [];
+  readonly edited: Array<{ messageId: string; content: string; attachments: DashboardAttachment[] }> = [];
+  messagesByChannel = new Map<string, DashboardMessageSnapshot[]>();
+  nextId = 1;
 
-class FakeChannel {
-  sent: FakeTemporaryMessage[] = [];
-  constructor(public readonly id: string, private readonly contents: string[]) {}
-  async send(content: string): Promise<FakeTemporaryMessage> {
-    this.contents.push(content);
-    const message = new FakeTemporaryMessage(String(this.sent.length + 1));
-    this.sent.push(message);
-    return message;
-  }
-}
-
-class FakePanelMessage implements PanelMessageHandle {
-  deleted = false;
-  editCount = 0;
-  readonly id: string;
-  content: string;
-  readonly channelId: string;
-  readonly channel: FakeChannel;
-
-  constructor(id: string, content: string, channelId: string, contents: string[]) {
-    this.id = id;
-    this.content = content;
-    this.channelId = channelId;
-    this.channel = new FakeChannel(channelId, contents);
+  async listChannelMessages(channelId: string): Promise<DashboardMessageSnapshot[]> {
+    return [...(this.messagesByChannel.get(channelId) ?? [])];
   }
 
-  async edit(content: string): Promise<void> {
-    this.content = content;
-    this.editCount += 1;
+  async createMessage(
+    channelId: string,
+    content: string,
+    attachments: DashboardAttachment[],
+  ): Promise<DashboardMessageSnapshot> {
+    const snapshot = this.buildMessage(channelId, String(this.nextId++), content, attachments);
+    this.created.push(snapshot);
+    this.messagesByChannel.set(channelId, [snapshot]);
+    return snapshot;
   }
 
-  async delete(): Promise<void> {
-    this.deleted = true;
+  async editMessage(
+    channelId: string,
+    messageId: string,
+    content: string,
+    attachments: DashboardAttachment[],
+  ): Promise<DashboardMessageSnapshot> {
+    this.edited.push({ messageId, content, attachments });
+    const snapshot = this.buildMessage(channelId, messageId, content, attachments);
+    this.messagesByChannel.set(channelId, [snapshot]);
+    return snapshot;
+  }
+
+  seed(channelId: string, messages: DashboardMessageSnapshot[]): void {
+    this.messagesByChannel.set(channelId, messages);
+  }
+
+  private buildMessage(
+    channelId: string,
+    id: string,
+    content: string,
+    attachments: DashboardAttachment[],
+  ): DashboardMessageSnapshot {
+    const existingAttachments: ExistingDashboardAttachment[] = attachments.map((attachment, index) =>
+      attachment.kind === "existing"
+        ? attachment
+        : {
+            kind: "existing",
+            id: `${id}-${index + 1}`,
+            filename: attachment.filename,
+            characterId: attachment.characterId,
+          },
+    );
+
+    return {
+      id,
+      channelId,
+      content,
+      attachments: existingAttachments,
+      createdAt: new Date("2026-04-17T18:00:00Z"),
+    };
   }
 }
 
 class FakeTarget implements CommandTarget {
   readonly supportsEphemeral = true;
   readonly acks: Array<{ content: string; temporary: boolean }> = [];
-  readonly panels: FakePanelMessage[] = [];
 
   constructor(
     public readonly guildId: string | null,
     public readonly channelId: string | null,
-    private readonly channelContents: string[],
   ) {}
 
   async sendAck(content: string, options?: { ephemeral?: boolean; temporary?: boolean }): Promise<void> {
     this.acks.push({ content, temporary: Boolean(options?.temporary) });
-  }
-
-  async sendPanel(content: string): Promise<PanelMessageHandle> {
-    this.channelContents.push(content);
-    const panel = new FakePanelMessage(String(this.panels.length + 1), content, "200", this.channelContents);
-    this.panels.push(panel);
-    return panel;
   }
 }
 
@@ -77,8 +96,7 @@ const config: RuntimeConfig = {
   siteBaseUrl: "https://private.example.test/Character-sheet.php",
   guildChannelConfig: {
     "1": {
-      configChannelId: "100",
-      dashboardChannelId: "200",
+      botChannelId: "200",
     },
   },
 };
@@ -86,11 +104,12 @@ const config: RuntimeConfig = {
 describe("CharacterBotService", () => {
   let stateStore: GuildStateStore;
   let fetchPage: Mock<(url: string) => Promise<string>>;
-  let channelContents: string[];
+  let dashboardStore: FakeDashboardStore;
   let service: CharacterBotService;
 
   beforeEach(() => {
     stateStore = new GuildStateStore();
+    dashboardStore = new FakeDashboardStore();
     fetchPage = vi.fn(async (url: string) => {
       const characterId = new URL(url).searchParams.get("characterID");
       if (characterId === "404") {
@@ -98,28 +117,29 @@ describe("CharacterBotService", () => {
       }
       return `<html><head><title>Character ${characterId} - Character Sheet</title></head></html>`;
     });
-    channelContents = [];
     service = new CharacterBotService({
       config,
+      dashboardStore,
       stateStore,
       fetchPage,
-      now: () => new Date("2026-04-07T21:15:00Z"),
+      now: () => new Date("2026-04-17T18:30:00Z"),
     });
   });
 
-  test("add tracks ids and creates dashboard panels", async () => {
-    const target = new FakeTarget("1", "100", channelContents);
+  test("add tracks ids and creates one dashboard post", async () => {
+    const target = new FakeTarget("1", "200");
 
     await service.addCharacters(target, "110 245");
 
     const state = stateStore.get("1");
-    expect([...state.tracked.keys()]).toEqual(["110", "245"]);
+    expect(state.trackedOrder).toEqual(["110", "245"]);
+    expect(dashboardStore.created).toHaveLength(1);
+    expect(dashboardStore.created[0]?.attachments).toHaveLength(2);
     expect(target.acks.at(-1)?.content).toContain("Added:");
-    expect(target.panels).toHaveLength(2);
   });
 
   test("add reports duplicates and invalid ids", async () => {
-    const target = new FakeTarget("1", "100", channelContents);
+    const target = new FakeTarget("1", "200");
 
     await service.addCharacters(target, "110");
     await service.addCharacters(target, "110 abc 245");
@@ -128,28 +148,27 @@ describe("CharacterBotService", () => {
     expect(target.acks.at(-1)?.content).toContain("abc");
   });
 
-  test("commands reject the wrong config channel", async () => {
-    const target = new FakeTarget("1", "999", channelContents);
+  test("commands reject the wrong bot channel", async () => {
+    const target = new FakeTarget("1", "999");
 
     await service.listCharacters(target);
 
-    expect(target.acks.at(-1)?.content).toContain("<#100>");
+    expect(target.acks.at(-1)?.content).toContain("<#200>");
   });
 
-  test("remove deletes existing panels and updates state", async () => {
-    const target = new FakeTarget("1", "100", channelContents);
-    await service.addCharacters(target, "110");
+  test("remove updates the authoritative dashboard", async () => {
+    const target = new FakeTarget("1", "200");
+    await service.addCharacters(target, "110 245");
 
-    const panel = target.panels[0]!;
     await service.removeCharacter(target, "110");
 
-    expect(stateStore.get("1").tracked.has("110")).toBe(false);
-    expect(panel.deleted).toBe(true);
+    expect(stateStore.get("1").trackedOrder).toEqual(["245"]);
+    expect(dashboardStore.edited.at(-1)?.attachments).toHaveLength(1);
     expect(target.acks.at(-1)?.content).toContain("Removed:");
   });
 
-  test("clear removes all characters and stops tracking", async () => {
-    const target = new FakeTarget("1", "100", channelContents);
+  test("clear preserves an empty dashboard post and stops tracking", async () => {
+    const target = new FakeTarget("1", "200");
     await service.addCharacters(target, "110 245");
 
     const state = stateStore.get("1");
@@ -161,19 +180,43 @@ describe("CharacterBotService", () => {
     expect(state.tracked.size).toBe(0);
     expect(state.trackingEnabled).toBe(false);
     expect(state.pollingController).toBeNull();
-    expect(target.panels.every((panel) => panel.deleted)).toBe(true);
+    expect(dashboardStore.edited.at(-1)?.attachments).toHaveLength(0);
+    expect(dashboardStore.edited.at(-1)?.content).toContain("No characters are currently tracked.");
   });
 
-  test("list reports empty registry", async () => {
-    const target = new FakeTarget("1", "100", channelContents);
+  test("list recovers tracked ids from dashboard metadata after restart", async () => {
+    dashboardStore.seed("200", [
+      {
+        id: "existing",
+        channelId: "200",
+        content: `${formatDashboardMetadata({
+          guildId: "1",
+          trackedCharacterIds: ["110", "245"],
+          updatedAt: new Date("2026-04-17T18:00:00Z"),
+        })}\n\nTracked characters: recovered`,
+        attachments: [
+          { kind: "existing", id: "a1", filename: "character-110.png", characterId: "110" },
+          { kind: "existing", id: "a2", filename: "character-245.png", characterId: "245" },
+        ],
+        createdAt: new Date("2026-04-17T18:00:00Z"),
+      },
+    ]);
+    const restartedService = new CharacterBotService({
+      config,
+      dashboardStore,
+      stateStore: new GuildStateStore(),
+      fetchPage,
+    });
+    const target = new FakeTarget("1", "200");
 
-    await service.listCharacters(target);
+    await restartedService.listCharacters(target);
 
-    expect(target.acks.at(-1)?.content).toBe("No characters are currently being tracked.");
+    expect(target.acks.at(-1)?.content).toContain("110");
+    expect(target.acks.at(-1)?.content).toContain("245");
   });
 
-  test("refresh updates existing panels in place and uses a temporary ack", async () => {
-    const target = new FakeTarget("1", "100", channelContents);
+  test("refresh updates dashboard attachments in tracked order and uses a temporary ack", async () => {
+    const target = new FakeTarget("1", "200");
     await service.addCharacters(target, "110");
 
     fetchPage.mockResolvedValueOnce(`
@@ -186,95 +229,28 @@ describe("CharacterBotService", () => {
         </body>
       </html>
     `);
-
-    const refreshTarget = new FakeTarget("1", "200", channelContents);
-    refreshTarget.panels.push(...target.panels);
-    await service.refreshCharacters(refreshTarget);
-
-    expect(target.panels[0]?.editCount).toBe(1);
-    expect(target.panels[0]?.content).toContain("0/7");
-    expect(target.panels[0]?.content).toContain("Prone");
-    expect(refreshTarget.acks.at(-1)).toEqual(expect.objectContaining({ temporary: true }));
-  });
-
-  test("refresh rejects the wrong dashboard channel", async () => {
-    const target = new FakeTarget("1", "100", channelContents);
-    await service.addCharacters(target, "110");
 
     await service.refreshCharacters(target);
 
-    expect(target.acks.at(-1)?.content).toContain("dashboard channel");
+    expect(dashboardStore.edited.at(-1)?.attachments[0]?.kind).toBe("rendered");
+    expect(target.acks.at(-1)).toEqual(expect.objectContaining({ temporary: true }));
   });
 
-  test("refresh marks panels stale after failed fetch and preserves last good data", async () => {
-    const target = new FakeTarget("1", "100", channelContents);
+  test("refresh marks a character stale after failed fetch and preserves its attachment slot", async () => {
+    const target = new FakeTarget("1", "200");
     await service.addCharacters(target, "110");
 
     fetchPage.mockRejectedValueOnce(new Error("boom"));
 
-    const refreshTarget = new FakeTarget("1", "200", channelContents);
-    refreshTarget.panels.push(...target.panels);
-    await service.refreshCharacters(refreshTarget);
+    await service.refreshCharacters(target);
 
-    expect(target.panels[0]?.content).toContain("STALE");
-    expect(stateStore.get("1").lastSnapshots.get("110")?.hp).toBe("Unavailable");
-  });
-
-  test("refresh clears stale marker after successful recovery", async () => {
-    const target = new FakeTarget("1", "100", channelContents);
-    await service.addCharacters(target, "110");
-
-    fetchPage.mockRejectedValueOnce(new Error("boom"));
-    const refreshTarget = new FakeTarget("1", "200", channelContents);
-    refreshTarget.panels.push(...target.panels);
-    await service.refreshCharacters(refreshTarget);
-
-    fetchPage.mockResolvedValueOnce(`
-      <html>
-        <head><title>Character 110 - Character Sheet</title></head>
-        <body>
-          <input type="text" name="hp_total" value="7" />
-          <input type="text" name="hp_current" value="3" />
-          <input type="checkbox" checked name="conditions_off-kilter" />
-        </body>
-      </html>
-    `);
-    await service.refreshCharacters(refreshTarget);
-
-    expect(target.panels[0]?.content).not.toContain("STALE");
-    expect(target.panels[0]?.content).toContain("3/7");
-    expect(target.panels[0]?.content).toContain("Off-kilter");
-  });
-
-  test("automatic refresh posts temporary change notices", async () => {
-    const target = new FakeTarget("1", "100", channelContents);
-    await service.addCharacters(target, "110");
-
-    fetchPage.mockResolvedValueOnce(`
-      <html>
-        <head><title>Character 110 - Character Sheet</title></head>
-        <body>
-          <input type="text" name="hp_total" value="7" />
-          <input type="text" name="hp_current" value="0" />
-          <input type="checkbox" checked name="condition_prone" />
-        </body>
-      </html>
-    `);
-
-    const result = await service.refreshTrackedCharacters("1", {
-      userTriggered: false,
-      announceChanges: true,
-    });
-
-    expect(result.failures).toEqual([]);
-    expect(result.changeSummaries.some((summary) => summary.includes("HP changed"))).toBe(true);
-    expect(target.panels[0]?.channel.sent.length).toBeGreaterThan(0);
-    expect(target.panels[0]?.channel.sent.every((message) => message.deleted)).toBe(true);
+    expect(stateStore.get("1").tracked.get("110")?.stale).toBe(true);
+    expect(dashboardStore.edited.at(-1)?.attachments).toHaveLength(1);
   });
 
   test("tracking start and stop manage polling lifecycle", async () => {
     vi.useFakeTimers();
-    const target = new FakeTarget("1", "100", channelContents);
+    const target = new FakeTarget("1", "200");
     await service.addCharacters(target, "110");
 
     await service.startTracking(target, 30);
@@ -292,7 +268,7 @@ describe("CharacterBotService", () => {
   });
 
   test("tracking start reports empty registry", async () => {
-    const target = new FakeTarget("1", "100", channelContents);
+    const target = new FakeTarget("1", "200");
 
     await service.startTracking(target);
 
@@ -300,7 +276,7 @@ describe("CharacterBotService", () => {
   });
 
   test("tracking start reports already ongoing when interval matches", async () => {
-    const target = new FakeTarget("1", "100", channelContents);
+    const target = new FakeTarget("1", "200");
     await service.addCharacters(target, "110");
 
     await service.startTracking(target, 60);
@@ -310,7 +286,7 @@ describe("CharacterBotService", () => {
   });
 
   test("spec regression: add failure does not create a tracked record", async () => {
-    const target = new FakeTarget("1", "100", channelContents);
+    const target = new FakeTarget("1", "200");
 
     await service.addCharacters(target, "404");
 
@@ -324,13 +300,53 @@ describe("CharacterBotService", () => {
         ...config,
         guildChannelConfig: {},
       },
+      dashboardStore,
       stateStore,
       fetchPage,
     });
-    const target = new FakeTarget("1", "100", channelContents);
+    const target = new FakeTarget("1", "200");
 
     await noChannelService.listCharacters(target);
 
-    expect(target.acks.at(-1)?.content).toContain("missing channel configuration");
+    expect(target.acks.at(-1)?.content).toContain("missing bot channel configuration");
+  });
+
+  test("multiple tagged posts recover from the most recently updated valid one", async () => {
+    dashboardStore.seed("200", [
+      {
+        id: "old",
+        channelId: "200",
+        content: formatDashboardMetadata({
+          guildId: "1",
+          trackedCharacterIds: ["110"],
+          updatedAt: new Date("2026-04-17T18:00:00Z"),
+        }),
+        attachments: [{ kind: "existing", id: "x1", filename: "character-110.png", characterId: "110" }],
+        createdAt: new Date("2026-04-17T18:00:00Z"),
+      },
+      {
+        id: "new",
+        channelId: "200",
+        content: formatDashboardMetadata({
+          guildId: "1",
+          trackedCharacterIds: ["245"],
+          updatedAt: new Date("2026-04-17T19:00:00Z"),
+        }),
+        attachments: [{ kind: "existing", id: "x2", filename: "character-245.png", characterId: "245" }],
+        createdAt: new Date("2026-04-17T19:00:00Z"),
+      },
+    ]);
+    const restartedService = new CharacterBotService({
+      config,
+      dashboardStore,
+      stateStore: new GuildStateStore(),
+      fetchPage,
+    });
+    const target = new FakeTarget("1", "200");
+
+    await restartedService.listCharacters(target);
+
+    expect(target.acks.at(-1)?.content).toContain("245");
+    expect(target.acks.at(-1)?.content).not.toContain("110");
   });
 });

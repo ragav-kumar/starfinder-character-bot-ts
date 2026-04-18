@@ -1,4 +1,6 @@
-import { UNAVAILABLE, type CharacterSnapshot, type SnapshotField, type TrackedCharacter } from "./types.js";
+import { createCanvas } from "@napi-rs/canvas";
+
+import { UNAVAILABLE, type CharacterSnapshot, type RenderedDashboardAttachment, type SnapshotField } from "./types.js";
 
 const DISPLAYED_FIELDS: Array<{ key: SnapshotField; label: string }> = [
   { key: "name", label: "Name" },
@@ -25,29 +27,6 @@ function snapshotValue(snapshot: CharacterSnapshot, key: SnapshotField): string 
   return value || UNAVAILABLE;
 }
 
-function padCell(value: string, width: number, align: "left" | "right" | "center"): string {
-  if (align === "right") {
-    return value.padStart(width);
-  }
-  if (align === "center") {
-    return value.padStart(Math.floor((width + value.length) / 2)).padEnd(width);
-  }
-  return value.padEnd(width);
-}
-
-function renderTable(
-  headers: readonly string[],
-  values: readonly string[],
-  minWidths: readonly number[],
-  aligns: ReadonlyArray<"left" | "right" | "center">,
-): string {
-  const widths = headers.map((header, index) => Math.max(header.length, values[index]!.length, minWidths[index]!));
-  const headerRow = headers.map((header, index) => padCell(header, widths[index]!, aligns[index]!)).join(" | ");
-  const separatorRow = widths.map((width) => "-".repeat(width)).join("-|-");
-  const valueRow = values.map((value, index) => padCell(value, widths[index]!, aligns[index]!)).join(" | ");
-  return [headerRow, separatorRow, valueRow].join("\n");
-}
-
 function formatTimestamp(date: Date): string {
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -57,54 +36,97 @@ function formatTimestamp(date: Date): string {
   return `${year}-${month}-${day} ${hours}:${minutes} UTC`;
 }
 
-export function renderCharacterPanel(record: TrackedCharacter, snapshot: CharacterSnapshot, stale = false): string {
-  const coreTable = renderTable(
-    ["Init", "HP", "SP", "RP"],
-    [snapshotValue(snapshot, "initiative"), snapshotValue(snapshot, "hp"), snapshotValue(snapshot, "stamina"), snapshotValue(snapshot, "resolve")],
-    [4, 5, 5, 4],
-    ["right", "right", "right", "right"],
-  );
-  const defenseTable = renderTable(
-    ["EAC", "KAC", "Fort", "Ref", "Will"],
-    [snapshotValue(snapshot, "eac"), snapshotValue(snapshot, "kac"), snapshotValue(snapshot, "fort"), snapshotValue(snapshot, "ref"), snapshotValue(snapshot, "will")],
-    [4, 4, 4, 3, 4],
-    ["right", "right", "right", "right", "right"],
-  );
-  const weaponTable = renderTable(
-    ["Attack", "Name", "Damage", "Type", "Range", "Ammo"],
-    [
-      snapshotValue(snapshot, "attack"),
-      snapshotValue(snapshot, "weaponName"),
-      snapshotValue(snapshot, "weaponDamage"),
-      snapshotValue(snapshot, "weaponDamageType"),
-      snapshotValue(snapshot, "weaponRange"),
-      snapshotValue(snapshot, "weaponAmmo"),
-    ],
-    [6, 12, 10, 9, 5, 11],
-    ["right", "left", "left", "left", "left", "left"],
-  );
+function wrapText(text: string, lineLength: number): string[] {
+  if (text.length <= lineLength) {
+    return [text];
+  }
 
-  const conditions = snapshot.conditions === UNAVAILABLE ? "None" : snapshot.conditions;
-  const footer = [
-    stale ? "STALE - last refresh failed; showing the previous successful data." : null,
-    `_Last updated: ${formatTimestamp(snapshot.lastUpdatedAt)}_`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length > lineLength && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  }
 
-  return [
-    `**${record.displayName}** (\`ID: ${record.characterId}\`)`,
-    "",
-    "```text",
-    coreTable,
-    `Conditions: ${conditions}`,
-    "",
-    defenseTable,
-    "",
-    weaponTable,
-    "```",
-    footer,
-  ].join("\n");
+  if (current) {
+    lines.push(current);
+  }
+
+  return lines.length > 0 ? lines : [text];
+}
+
+export function buildCharacterCardLines(displayName: string, characterId: string, snapshot: CharacterSnapshot, stale: boolean): string[] {
+  const lines = [
+    displayName,
+    `ID: ${characterId}`,
+    stale ? "STALE - last refresh failed" : "Status: current",
+    `Initiative  ${snapshotValue(snapshot, "initiative")}`,
+    `HP / SP / RP  ${snapshotValue(snapshot, "hp")} | ${snapshotValue(snapshot, "stamina")} | ${snapshotValue(snapshot, "resolve")}`,
+    `Conditions  ${snapshot.conditions === UNAVAILABLE ? "None" : snapshot.conditions}`,
+    `EAC / KAC  ${snapshotValue(snapshot, "eac")} / ${snapshotValue(snapshot, "kac")}`,
+    `Saves  Fort ${snapshotValue(snapshot, "fort")} | Ref ${snapshotValue(snapshot, "ref")} | Will ${snapshotValue(snapshot, "will")}`,
+    `Attack  ${snapshotValue(snapshot, "attack")}`,
+    `Weapon  ${snapshotValue(snapshot, "weaponName")}`,
+    `Damage  ${snapshotValue(snapshot, "weaponDamage")} ${snapshotValue(snapshot, "weaponDamageType")}`,
+    `Range  ${snapshotValue(snapshot, "weaponRange")}   Ammo  ${snapshotValue(snapshot, "weaponAmmo")}`,
+    `Last updated  ${formatTimestamp(snapshot.lastUpdatedAt)}`,
+  ];
+
+  return lines.flatMap((line, index) => (index >= 5 ? wrapText(line, 22) : [line]));
+}
+
+export function renderCharacterCard(
+  characterId: string,
+  displayName: string,
+  snapshot: CharacterSnapshot,
+  stale = false,
+): RenderedDashboardAttachment {
+  const width = 450;
+  const height = 560;
+  const canvas = createCanvas(width, height);
+  const context = canvas.getContext("2d");
+
+  context.fillStyle = "#f3ecd8";
+  context.fillRect(0, 0, width, height);
+
+  context.fillStyle = stale ? "#8d2f2f" : "#294c3b";
+  context.fillRect(0, 0, width, 80);
+
+  context.fillStyle = "#1f1d17";
+  context.fillRect(18, 96, width - 36, height - 114);
+
+  context.fillStyle = "#f8f2df";
+  context.font = "bold 22px sans-serif";
+  context.fillText(displayName, 24, 44, width - 48);
+  context.font = "16px sans-serif";
+  context.fillText(`Character ${characterId}`, 24, 66);
+
+  const lines = buildCharacterCardLines(displayName, characterId, snapshot, stale);
+  context.font = "16px sans-serif";
+  let y = 126;
+  for (const [index, line] of lines.entries()) {
+    context.fillStyle = index === 2 && stale ? "#ffb0b0" : "#f8f2df";
+    context.fillText(line, 32, y, width - 64);
+    y += 21;
+  }
+
+  context.strokeStyle = stale ? "#d65c5c" : "#85b199";
+  context.lineWidth = 3;
+  context.strokeRect(20, 98, width - 40, height - 118);
+
+  return {
+    kind: "rendered",
+    characterId,
+    filename: `character-${characterId}.png`,
+    contentType: "image/png",
+    data: canvas.toBuffer("image/png"),
+  };
 }
 
 export function diffSnapshots(previous: CharacterSnapshot | undefined, current: CharacterSnapshot): string[] {

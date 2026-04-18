@@ -10,6 +10,7 @@ function createGuildState(): GuildState {
     lastSnapshots: new Map(),
     pollingController: null,
     trackedOrder: [],
+    dashboardMessageId: null,
   };
 }
 

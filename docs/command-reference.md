@@ -1,28 +1,30 @@
 # Starfinder Character Bot Command Reference
 
 **Audience:** Human operators and testers  
-**Purpose:** Living reference for the bot's current slash commands and their visible behavior  
+**Purpose:** Reference for the bot's current slash commands and visible behavior  
 **Maintenance rule:** Update this document any time supported commands, arguments, channel restrictions, acknowledgements, or dashboard side effects change.
 
 ---
 
 ## Overview
 
-The bot currently exposes one slash-command group:
+The bot exposes one slash-command group:
 
 ```text
 /characters
 ```
 
 Channel model:
-- Phase 1: use the configured **configuration channel** for management commands and the configured **dashboard channel** for `/characters refresh`
-- Phase 2 target: use one configured **bot channel** for all commands and for the tagged dashboard post
+- use the configured bot channel for all commands
+- the authoritative dashboard post also lives in that same bot channel
 
-Dashboard model by phase:
-- Phase 1: one persistent text panel message per tracked character
-- Phase 2 target: one tagged dashboard message with one image per tracked character
+Dashboard model:
+- each guild has one authoritative dashboard post
+- the message body starts with a bot-readable metadata block
+- the dashboard post attachments contain one rendered image per tracked character
+- routine updates edit the same dashboard post in place
 
-If a numbered phase spec and this reference disagree, the later numbered phase spec wins. Use this document as the human-facing quick reference, not as the design authority.
+If no characters are tracked, the dashboard post remains in place with empty tracked metadata and no character images.
 
 ---
 
@@ -46,10 +48,11 @@ Behavior:
 - adds each valid, reachable character to the tracked roster
 - reports duplicates without adding them again
 - reports invalid or unreachable IDs as failures
+- fetches character data immediately for newly added characters
 
 Dashboard effect:
-- Phase 1: creates one persistent panel message per newly tracked character
-- Phase 2 target: updates the tagged dashboard post so a new image is present for each newly tracked character
+- edits the authoritative dashboard post so each newly tracked character appears as a new image attachment
+- keeps attachment order aligned with tracked-character order
 
 Acknowledgement:
 - concise per-ID summary, typically ephemeral when supported
@@ -66,8 +69,8 @@ Behavior:
 - reports `Not tracked` if the ID is not in the roster
 
 Dashboard effect:
-- Phase 1: deletes that character's dashboard message
-- Phase 2 target: updates the tagged dashboard post so that character's image is removed
+- edits the authoritative dashboard post so that character's image is removed
+- updates dashboard metadata to keep the tracked roster in sync
 
 Acknowledgement:
 - short success or not-tracked message, typically ephemeral when supported
@@ -81,8 +84,8 @@ Behavior:
 - stops automatic tracking
 
 Dashboard effect:
-- Phase 1: deletes all dashboard panel messages
-- Phase 2 target: keeps the tagged dashboard post but updates it to an empty-dashboard state
+- keeps the authoritative dashboard post
+- updates it to an empty-dashboard state with no character images
 
 Acknowledgement:
 - short reset confirmation, typically ephemeral when supported
@@ -92,8 +95,9 @@ Acknowledgement:
 Shows the currently tracked characters for the current guild.
 
 Behavior:
-- returns each tracked character's display name and numeric ID
+- returns each tracked character's display name and numeric ID when available
 - reports when no characters are tracked
+- may recover the tracked roster from the authoritative dashboard metadata if the bot has restarted
 
 Dashboard effect:
 - none
@@ -108,14 +112,12 @@ Triggers one immediate refresh cycle.
 Behavior:
 - refreshes all currently tracked characters once
 - does not change whether automatic tracking is enabled
-
-Channel restriction:
-- Phase 1: dashboard channel only
-- Phase 2 target: the configured bot channel
+- keeps the tracked roster even if one or more refreshes fail
 
 Dashboard effect:
-- Phase 1: edits each tracked character panel message in place
-- Phase 2 target: edits the tagged dashboard post in place, replacing its image attachments as needed
+- edits the authoritative dashboard post in place
+- replaces the image attachment set as a synchronized group
+- keeps the previous successful character data visible when possible and marks failed characters stale
 
 Acknowledgement:
 - temporary acknowledgement that should disappear after the refresh completes
@@ -158,16 +160,14 @@ Acknowledgement:
 ## Validation And Channel Rules
 
 - `characterID` values must be numeric.
-- Phase 1: config commands belong in the configured configuration channel, and `/characters refresh` belongs in the configured dashboard channel.
-- Phase 2 target: all commands belong in the configured bot channel.
+- All commands must be run in the configured bot channel.
 - If a command is used in the wrong channel, the bot should acknowledge that and point to the correct one.
-- If channel configuration is missing, the bot should acknowledge what is missing instead of failing silently.
+- If bot-channel configuration is missing, the bot should acknowledge what is missing instead of failing silently.
+- If a tagged dashboard post cannot be recovered, the bot may create a new clean authoritative post when a dashboard-affecting command runs.
 
 ---
 
 ## Operator Notes
 
 - The current slash commands are defined in [src/bot.ts](/c:/repos/starfinder-character-bot-ts/src/bot.ts).
-- The authoritative behavior specs live in:
-  - [docs/prototype-spec.md](/c:/repos/starfinder-character-bot-ts/docs/prototype-spec.md) for Phase 1
-  - [docs/phase-2-spec.md](/c:/repos/starfinder-character-bot-ts/docs/phase-2-spec.md) for Phase 2 and later implementation work until superseded
+- The authoritative dashboard metadata format and recovery helpers live in [src/dashboard.ts](/c:/repos/starfinder-character-bot-ts/src/dashboard.ts).
