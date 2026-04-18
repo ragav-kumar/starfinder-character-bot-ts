@@ -21,6 +21,11 @@ import type {
   RuntimeConfig,
 } from "./types.js";
 
+type InteractionReplyTarget = Pick<
+  ChatInputCommandInteraction,
+  "deferred" | "replied" | "deferReply" | "reply" | "editReply" | "followUp" | "deleteReply"
+>;
+
 const commandDefinitions = [
   new SlashCommandBuilder()
     .setName("characters")
@@ -176,6 +181,10 @@ class DiscordInteractionTarget implements CommandTarget {
     this.channelId = interaction.channelId;
   }
 
+  async prepareAck(options: { ephemeral?: boolean } = {}): Promise<void> {
+    await prepareInteractionAck(this.interaction, options);
+  }
+
   async sendAck(
     content: string,
     options: {
@@ -183,12 +192,7 @@ class DiscordInteractionTarget implements CommandTarget {
       temporary?: boolean;
     } = {},
   ): Promise<void> {
-    const flags = options.ephemeral ? MessageFlags.Ephemeral : undefined;
-    if (this.interaction.replied || this.interaction.deferred) {
-      await this.interaction.followUp({ content, flags });
-    } else {
-      await this.interaction.reply({ content, flags });
-    }
+    await sendInteractionAck(this.interaction, content, options);
 
     if (options.temporary) {
       try {
@@ -204,6 +208,40 @@ class DiscordInteractionTarget implements CommandTarget {
       }
     }
   }
+}
+
+export async function prepareInteractionAck(
+  interaction: InteractionReplyTarget,
+  options: { ephemeral?: boolean } = {},
+): Promise<void> {
+  if (interaction.deferred || interaction.replied) {
+    return;
+  }
+
+  const flags = options.ephemeral ? MessageFlags.Ephemeral : undefined;
+  await interaction.deferReply({ flags });
+}
+
+export async function sendInteractionAck(
+  interaction: InteractionReplyTarget,
+  content: string,
+  options: {
+    ephemeral?: boolean;
+  } = {},
+): Promise<void> {
+  const flags = options.ephemeral ? MessageFlags.Ephemeral : undefined;
+
+  if (interaction.deferred && !interaction.replied) {
+    await interaction.editReply({ content });
+    return;
+  }
+
+  if (interaction.replied) {
+    await interaction.followUp({ content, flags });
+    return;
+  }
+
+  await interaction.reply({ content, flags });
 }
 
 export function createDiscordClient(config: RuntimeConfig, service?: CharacterBotService): Client {
@@ -229,6 +267,7 @@ export function createDiscordClient(config: RuntimeConfig, service?: CharacterBo
     const target = new DiscordInteractionTarget(interaction);
 
     try {
+      await target.prepareAck({ ephemeral: target.supportsEphemeral });
       const group = interaction.options.getSubcommandGroup(false);
       const subcommand = interaction.options.getSubcommand();
       const key = group ? `${group}/${subcommand}` : subcommand;
@@ -262,7 +301,9 @@ export function createDiscordClient(config: RuntimeConfig, service?: CharacterBo
         commandName: interaction.commandName,
       });
       const message = `Command failed: ${error instanceof Error ? error.message : String(error)}`;
-      if (interaction.replied || interaction.deferred) {
+      if (interaction.deferred && !interaction.replied) {
+        await interaction.editReply({ content: message }).catch(() => undefined);
+      } else if (interaction.replied) {
         await interaction.followUp({ content: message, flags: MessageFlags.Ephemeral }).catch(() => undefined);
       } else {
         await interaction.reply({ content: message, flags: MessageFlags.Ephemeral }).catch(() => undefined);
