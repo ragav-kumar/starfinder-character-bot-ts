@@ -251,7 +251,7 @@ export function createDiscordClient(config: RuntimeConfig, service?: CharacterBo
   const client = new Client(clientOptions);
   const resolvedService = service ?? new CharacterBotService({ config, dashboardStore: new DiscordDashboardStore(client) });
 
-  client.once("ready", async () => {
+  client.once("clientReady", async () => {
     if (!client.application) {
       return;
     }
