@@ -39,8 +39,10 @@ describe("rendering", () => {
       weaponAmmo: " ",
     }, false);
 
-    expect(data.cardWidth).toBe(String(CARD_WIDTH));
-    expect(data.cardHeight).toBe(String(CARD_HEIGHT));
+    expect("cardWidth" in data).toBe(false);
+    expect("cardBackground" in data).toBe(false);
+    expect(data.status).toBe("CURRENT");
+    expect("isStale" in data).toBe(false);
     expect(data.conditionsDisplay).toBe("None");
     expect(data.weaponAmmo).toBe("Unavailable");
     expect(data.lastUpdated).toBe(formatTimestamp(snapshot.lastUpdatedAt));
@@ -54,6 +56,7 @@ describe("rendering", () => {
 
     expect(markup).toContain("Paul &lt;Paul&gt;");
     expect(markup).toContain("&lt;Laser Pistol&gt;");
+    expect(markup).toContain("CURRENT");
   });
 
   test("renders a png attachment with configured dimensions and stale-state differences", async () => {
@@ -77,6 +80,15 @@ describe("rendering", () => {
 
     expect(changed).not.toBe(original);
     expect(changed).toContain("Plasma Bolter");
+  });
+
+  test("template renders a static layout with status text substitution", async () => {
+    const freshMarkup = await renderCharacterCardMarkup(buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, false));
+    const staleMarkup = await renderCharacterCardMarkup(buildCharacterCardTemplateData("Paul-Paul Atreides", "110", snapshot, true));
+
+    expect(freshMarkup).toContain("CURRENT");
+    expect(staleMarkup).toContain("STALE");
+    expect(freshMarkup).not.toBe(staleMarkup);
   });
 });
 

@@ -42,12 +42,10 @@ interface FontDefinition {
 /**
  * Template placeholders available in `templates/character-card.html`.
  *
- * Card frame and state:
- * - `cardWidth`, `cardHeight`: overall card dimensions in pixels
+ * Card state:
  * - `displayName`: rendered character name shown in the card header
  * - `characterId`: numeric Starfinder character id
- * - `statusLabel`: short status pill text (`CURRENT` or `STALE`)
- * - `statusDetail`: longer status copy beneath the title
+ * - `status`: short status text (`CURRENT` or `STALE`)
  * - `lastUpdated`: UTC timestamp formatted for display
  *
  * Snapshot-backed values:
@@ -58,24 +56,15 @@ interface FontDefinition {
  * - `weaponDamage`, `weaponDamageType`
  * - `damageSummary`: preformatted `${weaponDamage} ${weaponDamageType}` string
  *
- * Theme and visual state tokens:
- * - `cardBackground`, `panelBackground`, `surfaceBackground`
- * - `headerBackground`, `headerTextColor`
- * - `frameBorderColor`, `statusBackground`, `statusTextColor`
- * - `bodyTextColor`, `labelTextColor`, `mutedTextColor`
- *
  * Fallback semantics:
  * - All snapshot-backed values except `conditionsDisplay` fall back to `Unavailable`
  * - Placeholder substitution always HTML-escapes inserted values
  * - Unknown placeholders throw to keep the template contract in sync with this type
  */
 export interface CharacterCardTemplateData {
-  cardWidth: string;
-  cardHeight: string;
   displayName: string;
   characterId: string;
-  statusLabel: string;
-  statusDetail: string;
+  status: "CURRENT" | "STALE";
   lastUpdated: string;
   initiative: string;
   hp: string;
@@ -94,17 +83,6 @@ export interface CharacterCardTemplateData {
   weaponDamage: string;
   weaponDamageType: string;
   damageSummary: string;
-  cardBackground: string;
-  panelBackground: string;
-  surfaceBackground: string;
-  headerBackground: string;
-  headerTextColor: string;
-  frameBorderColor: string;
-  statusBackground: string;
-  statusTextColor: string;
-  bodyTextColor: string;
-  labelTextColor: string;
-  mutedTextColor: string;
 }
 
 let templatePromise: Promise<string> | undefined;
@@ -165,12 +143,9 @@ export function buildCharacterCardTemplateData(
   const weaponDamageType = snapshotValue(snapshot, "weaponDamageType");
 
   return {
-    cardWidth: String(CARD_WIDTH),
-    cardHeight: String(CARD_HEIGHT),
     displayName: displayName.trim() || `Character ${characterId}`,
     characterId,
-    statusLabel: stale ? "STALE" : "CURRENT",
-    statusDetail: stale ? "Last refresh failed. Showing the previous successful snapshot." : "Snapshot is current.",
+    status: stale ? "STALE" : "CURRENT",
     lastUpdated: formatTimestamp(snapshot.lastUpdatedAt),
     initiative: snapshotValue(snapshot, "initiative"),
     hp: snapshotValue(snapshot, "hp"),
@@ -189,17 +164,6 @@ export function buildCharacterCardTemplateData(
     weaponDamage,
     weaponDamageType,
     damageSummary: `${weaponDamage} ${weaponDamageType}`.trim(),
-    cardBackground: "#f3ecd8",
-    panelBackground: "#1f1d17",
-    surfaceBackground: stale ? "#342124" : "#273229",
-    headerBackground: stale ? "#8d2f2f" : "#294c3b",
-    headerTextColor: "#f8f2df",
-    frameBorderColor: stale ? "#d65c5c" : "#85b199",
-    statusBackground: stale ? "#f5d1d1" : "#d5eadc",
-    statusTextColor: stale ? "#6f1c1c" : "#1d4b36",
-    bodyTextColor: "#f8f2df",
-    labelTextColor: "#c0d3c8",
-    mutedTextColor: "#d0c5af",
   };
 }
 

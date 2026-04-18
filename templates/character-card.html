@@ -1,13 +1,13 @@
 <div
   style="
-    width: {{cardWidth}}px;
-    height: {{cardHeight}}px;
+    width: 450px;
+    height: 560px;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
     padding: 18px;
-    background: {{cardBackground}};
-    color: {{bodyTextColor}};
+    background: #f3ecd8;
+    color: #f8f2df;
     font-family: Inter;
   "
 >
@@ -18,8 +18,8 @@
       gap: 10px;
       padding: 18px 20px;
       border-radius: 18px;
-      background: {{headerBackground}};
-      color: {{headerTextColor}};
+      background: #294c3b;
+      color: #f8f2df;
     "
   >
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
@@ -35,16 +35,16 @@
           min-width: 102px;
           padding: 8px 12px;
           border-radius: 999px;
-          background: {{statusBackground}};
-          color: {{statusTextColor}};
+          background: #d5eadc;
+          color: #1d4b36;
           font-size: 13px;
           font-weight: 700;
         "
       >
-        {{statusLabel}}
+        {{status}}
       </div>
     </div>
-    <div style="font-size: 13px; opacity: 0.92; word-break: break-word;">{{statusDetail}}</div>
+    <div style="font-size: 13px; opacity: 0.92; word-break: break-word;">Snapshot is current.</div>
   </div>
 
   <div
@@ -55,60 +55,60 @@
       gap: 14px;
       margin-top: 14px;
       padding: 18px;
-      border: 3px solid {{frameBorderColor}};
+      border: 3px solid #85b199;
       border-radius: 18px;
-      background: {{panelBackground}};
+      background: #1f1d17;
     "
   >
     <div style="display: flex; gap: 12px;">
-      <div style="display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; background: {{surfaceBackground}};">
-        <div style="font-size: 12px; font-weight: 700; color: {{labelTextColor}}; text-transform: uppercase;">Initiative</div>
+      <div style="display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; background: #273229;">
+        <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Initiative</div>
         <div style="font-size: 24px; font-weight: 700;">{{initiative}}</div>
       </div>
-      <div style="display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; background: {{surfaceBackground}};">
-        <div style="font-size: 12px; font-weight: 700; color: {{labelTextColor}}; text-transform: uppercase;">Attack</div>
+      <div style="display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; background: #273229;">
+        <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Attack</div>
         <div style="font-size: 24px; font-weight: 700; word-break: break-word;">{{attack}}</div>
       </div>
     </div>
 
     <div style="display: flex; gap: 10px;">
-      <div style="display: flex; flex: 1; flex-direction: column; gap: 4px; padding: 12px; border-radius: 14px; background: {{surfaceBackground}};">
-        <div style="font-size: 12px; font-weight: 700; color: {{labelTextColor}}; text-transform: uppercase;">HP</div>
+      <div style="display: flex; flex: 1; flex-direction: column; gap: 4px; padding: 12px; border-radius: 14px; background: #273229;">
+        <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">HP</div>
         <div style="font-size: 22px; font-weight: 700;">{{hp}}</div>
       </div>
-      <div style="display: flex; flex: 1; flex-direction: column; gap: 4px; padding: 12px; border-radius: 14px; background: {{surfaceBackground}};">
-        <div style="font-size: 12px; font-weight: 700; color: {{labelTextColor}}; text-transform: uppercase;">SP</div>
+      <div style="display: flex; flex: 1; flex-direction: column; gap: 4px; padding: 12px; border-radius: 14px; background: #273229;">
+        <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">SP</div>
         <div style="font-size: 22px; font-weight: 700;">{{stamina}}</div>
       </div>
-      <div style="display: flex; flex: 1; flex-direction: column; gap: 4px; padding: 12px; border-radius: 14px; background: {{surfaceBackground}};">
-        <div style="font-size: 12px; font-weight: 700; color: {{labelTextColor}}; text-transform: uppercase;">RP</div>
+      <div style="display: flex; flex: 1; flex-direction: column; gap: 4px; padding: 12px; border-radius: 14px; background: #273229;">
+        <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">RP</div>
         <div style="font-size: 22px; font-weight: 700;">{{resolve}}</div>
       </div>
     </div>
 
-    <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: {{surfaceBackground}};">
-      <div style="font-size: 12px; font-weight: 700; color: {{labelTextColor}}; text-transform: uppercase;">Conditions</div>
+    <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: #273229;">
+      <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Conditions</div>
       <div style="font-size: 17px; font-weight: 600; word-break: break-word;">{{conditionsDisplay}}</div>
     </div>
 
     <div style="display: flex; gap: 10px;">
-      <div style="display: flex; flex: 1; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: {{surfaceBackground}};">
-        <div style="font-size: 12px; font-weight: 700; color: {{labelTextColor}}; text-transform: uppercase;">Armor</div>
+      <div style="display: flex; flex: 1; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: #273229;">
+        <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Armor</div>
         <div style="font-size: 17px; font-weight: 600;">EAC {{eac}} / KAC {{kac}}</div>
       </div>
-      <div style="display: flex; flex: 1; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: {{surfaceBackground}};">
-        <div style="font-size: 12px; font-weight: 700; color: {{labelTextColor}}; text-transform: uppercase;">Saves</div>
+      <div style="display: flex; flex: 1; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: #273229;">
+        <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Saves</div>
         <div style="font-size: 15px; font-weight: 600; line-height: 1.35;">Fort {{fort}} | Ref {{ref}} | Will {{will}}</div>
       </div>
     </div>
 
-    <div style="display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: {{surfaceBackground}};">
-      <div style="font-size: 12px; font-weight: 700; color: {{labelTextColor}}; text-transform: uppercase;">Weapon</div>
+    <div style="display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: #273229;">
+      <div style="font-size: 12px; font-weight: 700; color: #c0d3c8; text-transform: uppercase;">Weapon</div>
       <div style="font-size: 20px; font-weight: 700; word-break: break-word;">{{weaponName}}</div>
       <div style="font-size: 15px; line-height: 1.4; word-break: break-word;">Damage {{damageSummary}}</div>
       <div style="font-size: 15px; line-height: 1.4; word-break: break-word;">Range {{weaponRange}} | Ammo {{weaponAmmo}}</div>
     </div>
 
-    <div style="margin-top: auto; font-size: 12px; color: {{mutedTextColor}};">Last updated {{lastUpdated}}</div>
+    <div style="margin-top: auto; font-size: 12px; color: #d0c5af;">Last updated {{lastUpdated}}</div>
   </div>
 </div>
