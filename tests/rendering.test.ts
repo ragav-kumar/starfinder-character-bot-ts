@@ -4,10 +4,16 @@ import { describe, expect, test } from "vitest";
 
 import {
   buildCharacterCardTemplateData,
+  CARD_HEIGHT,
+  CARD_WIDTH,
+  DASHBOARD_COLUMNS,
+  DASHBOARD_FILENAME,
   formatTimestamp,
+  getCompositeDashboardDimensions,
   populateCharacterCardTemplate,
   renderCharacterCard,
   renderCharacterCardMarkup,
+  renderCompositeDashboard,
 } from "../src/rendering.js";
 import type { CharacterSnapshot } from "../src/types.js";
 
@@ -103,6 +109,54 @@ describe("rendering", () => {
     expect(attachment.kind).toBe("rendered");
     expect(attachment.filename).toBe("character-110.png");
     expect(attachment.contentType).toBe("image/png");
+    expect(attachment.data.length).toBeGreaterThan(0);
+  });
+
+  test("renders a single-card composite dashboard", async () => {
+    const attachment = await renderCompositeDashboard([
+      { characterId: "110", displayName: "Paul-Paul Atreides", snapshot, stale: false },
+    ]);
+
+    expect(attachment.kind).toBe("rendered");
+    expect(attachment.filename).toBe(DASHBOARD_FILENAME);
+    expect(attachment.contentType).toBe("image/png");
+    expect(attachment.data.length).toBeGreaterThan(0);
+  });
+
+  test("keeps composite dimensions to one row for small rosters", () => {
+    expect(getCompositeDashboardDimensions(2)).toEqual({
+      columns: 2,
+      rows: 1,
+      width: 24 * 2 + CARD_WIDTH * 2 + 24,
+      height: 24 * 2 + CARD_HEIGHT,
+    });
+  });
+
+  test("wraps composite dashboards after three columns", () => {
+    expect(DASHBOARD_COLUMNS).toBe(3);
+    expect(getCompositeDashboardDimensions(5)).toEqual({
+      columns: 3,
+      rows: 2,
+      width: 24 * 2 + CARD_WIDTH * 3 + 24 * 2,
+      height: 24 * 2 + CARD_HEIGHT * 2 + 24,
+    });
+  });
+
+  test("renders multi-row composite dashboards with stale cards included", async () => {
+    const cards = Array.from({ length: 5 }, (_, index) => ({
+      characterId: String(110 + index),
+      displayName: `Character ${110 + index}`,
+      snapshot: {
+        ...snapshot,
+        name: `Character ${110 + index}`,
+        lastUpdatedAt: new Date(`2026-04-07T21:1${index}:00Z`),
+      },
+      stale: index === 4,
+    }));
+
+    const attachment = await renderCompositeDashboard(cards);
+
+    expect(attachment.filename).toBe(DASHBOARD_FILENAME);
     expect(attachment.data.length).toBeGreaterThan(0);
   });
 

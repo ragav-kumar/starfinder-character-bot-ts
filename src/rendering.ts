@@ -35,12 +35,23 @@ const DISPLAYED_FIELDS: Array<{ key: SnapshotField; label: string }> = [
 
 export const CARD_WIDTH = 450;
 export const CARD_HEIGHT = 560;
+export const DASHBOARD_COLUMNS = 3;
+export const DASHBOARD_GAP = 24;
+export const DASHBOARD_PADDING = 24;
+export const DASHBOARD_FILENAME = "starfinder-dashboard.png";
 
 interface FontDefinition {
   data: Buffer;
   name: string;
   weight: 400 | 700;
   style: "normal";
+}
+
+export interface CompositeDashboardCard {
+  characterId: string;
+  displayName: string;
+  snapshot: CharacterSnapshot;
+  stale: boolean;
 }
 
 const CHARACTER_CARD_TEMPLATE_KEYS = [
@@ -251,6 +262,20 @@ export async function renderCharacterCardMarkup(data: CharacterCardTemplateData)
   return populateCharacterCardTemplate(template, data);
 }
 
+async function renderCharacterCardSvg(data: CharacterCardTemplateData): Promise<string> {
+  const markup = await renderCharacterCardMarkup(data);
+  return satori(html(markup), {
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    fonts: await loadFontDefinitions(),
+  });
+}
+
+async function renderCharacterCardPngData(data: CharacterCardTemplateData): Promise<Buffer> {
+  const svg = await renderCharacterCardSvg(data);
+  return new Resvg(svg).render().asPng();
+}
+
 export async function renderCharacterCard(
   characterId: string,
   displayName: string,
@@ -258,13 +283,7 @@ export async function renderCharacterCard(
   stale = false,
 ): Promise<RenderedDashboardAttachment> {
   const data = buildCharacterCardTemplateData(displayName, characterId, snapshot, stale);
-  const markup = await renderCharacterCardMarkup(data);
-  const svg = await satori(html(markup), {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    fonts: await loadFontDefinitions(),
-  });
-  const pngBuffer = new Resvg(svg).render().asPng();
+  const pngBuffer = await renderCharacterCardPngData(data);
 
   return {
     kind: "rendered",
@@ -272,6 +291,65 @@ export async function renderCharacterCard(
     filename: `character-${characterId}.png`,
     contentType: "image/png",
     data: pngBuffer,
+  };
+}
+
+function toDataUri(value: string | Buffer, contentType: string): string {
+  const base64 = typeof value === "string" ? Buffer.from(value, "utf8").toString("base64") : value.toString("base64");
+  return `data:${contentType};base64,${base64}`;
+}
+
+export function getCompositeDashboardDimensions(cardCount: number): { width: number; height: number; columns: number; rows: number } {
+  const columns = Math.max(1, Math.min(DASHBOARD_COLUMNS, cardCount));
+  const rows = Math.max(1, Math.ceil(cardCount / DASHBOARD_COLUMNS));
+
+  return {
+    columns,
+    rows,
+    width: DASHBOARD_PADDING * 2 + columns * CARD_WIDTH + Math.max(0, columns - 1) * DASHBOARD_GAP,
+    height: DASHBOARD_PADDING * 2 + rows * CARD_HEIGHT + Math.max(0, rows - 1) * DASHBOARD_GAP,
+  };
+}
+
+export async function renderCompositeDashboard(cards: CompositeDashboardCard[]): Promise<RenderedDashboardAttachment> {
+  if (cards.length === 0) {
+    throw new Error("Cannot render a composite dashboard without any cards.");
+  }
+
+  const { width, height } = getCompositeDashboardDimensions(cards.length);
+  const renderedCards = await Promise.all(
+    cards.map(async (card) => ({
+      ...card,
+      png: await renderCharacterCardPngData(
+        buildCharacterCardTemplateData(card.displayName, card.characterId, card.snapshot, card.stale),
+      ),
+    })),
+  );
+
+  const images = renderedCards
+    .map((card, index) => {
+      const column = index % DASHBOARD_COLUMNS;
+      const row = Math.floor(index / DASHBOARD_COLUMNS);
+      const x = DASHBOARD_PADDING + column * (CARD_WIDTH + DASHBOARD_GAP);
+      const y = DASHBOARD_PADDING + row * (CARD_HEIGHT + DASHBOARD_GAP);
+      return `<image href="${toDataUri(card.png, "image/png")}" x="${x}" y="${y}" width="${CARD_WIDTH}" height="${CARD_HEIGHT}" />`;
+    })
+    .join("");
+
+  const compositeSvg = [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+    `<rect width="${width}" height="${height}" fill="#13202d" />`,
+    `<rect x="8" y="8" width="${width - 16}" height="${height - 16}" rx="18" fill="#1a2b3b" stroke="#3b566f" stroke-width="2" />`,
+    images,
+    "</svg>",
+  ].join("");
+
+  return {
+    kind: "rendered",
+    characterId: "dashboard",
+    filename: DASHBOARD_FILENAME,
+    contentType: "image/png",
+    data: new Resvg(compositeSvg).render().asPng(),
   };
 }
 

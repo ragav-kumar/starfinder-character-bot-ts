@@ -1,7 +1,7 @@
 import { selectAuthoritativeDashboard, formatDashboardMetadata } from "./dashboard.js";
 import { buildCharacterUrl, fetchCharacterPage, scrapeCharacterSheet } from "./fetcher.js";
 import { logException } from "./logging.js";
-import { renderCharacterCard, diffSnapshots } from "./rendering.js";
+import { diffSnapshots, renderCompositeDashboard } from "./rendering.js";
 import { GuildStateStore } from "./state.js";
 import type {
   BotChannelConfig,
@@ -88,7 +88,6 @@ export class CharacterBotService {
           displayName: snapshot.name || `Character ${characterId}`,
           stale: false,
           lastRefreshError: null,
-          dashboardAttachment: await renderCharacterCard(characterId, snapshot.name || `Character ${characterId}`, snapshot, false),
         };
 
         state.tracked.set(characterId, record);
@@ -344,7 +343,6 @@ export class CharacterBotService {
         record.displayName = snapshot.name || record.displayName;
         record.stale = false;
         record.lastRefreshError = null;
-        record.dashboardAttachment = await renderCharacterCard(characterId, record.displayName, snapshot, false);
         state.lastSnapshots.set(characterId, snapshot);
 
         const changes = diffSnapshots(previousSnapshot, snapshot);
@@ -360,9 +358,6 @@ export class CharacterBotService {
         failures.push(`${record.displayName} (${characterId})`);
         record.stale = true;
         record.lastRefreshError = String(error);
-        if (previousSnapshot) {
-          record.dashboardAttachment = await renderCharacterCard(characterId, record.displayName, previousSnapshot, true);
-        }
       }
     }
 
@@ -403,15 +398,13 @@ export class CharacterBotService {
     state.trackedOrder = [...metadata.trackedCharacterIds];
 
     const recoveredTracked = new Map<string, TrackedCharacter>();
-    for (const [index, characterId] of metadata.trackedCharacterIds.entries()) {
+    for (const characterId of metadata.trackedCharacterIds) {
       const existing = state.tracked.get(characterId);
-      const attachment = message.attachments[index] ?? null;
       recoveredTracked.set(characterId, {
         characterId,
         displayName: existing?.displayName ?? state.lastSnapshots.get(characterId)?.name ?? `Character ${characterId}`,
         stale: existing?.stale ?? false,
         lastRefreshError: existing?.lastRefreshError ?? null,
-        dashboardAttachment: existing?.dashboardAttachment ?? attachment,
       });
     }
 
@@ -439,7 +432,7 @@ export class CharacterBotService {
     };
     const humanReadable = this.buildDashboardBody(state);
     const content = `${formatDashboardMetadata(metadata)}\n\n${humanReadable}`;
-    const attachments = this.buildDashboardAttachments(state);
+    const attachments = await this.buildDashboardAttachments(state);
 
     const result =
       state.dashboardMessageId === null
@@ -449,10 +442,42 @@ export class CharacterBotService {
     state.dashboardMessageId = result.id;
   }
 
-  private buildDashboardAttachments(state: ReturnType<GuildStateStore["get"]>): DashboardAttachment[] {
-    return state.trackedOrder
-      .map((characterId) => state.tracked.get(characterId)?.dashboardAttachment ?? null)
-      .filter((attachment): attachment is DashboardAttachment => Boolean(attachment));
+  private async buildDashboardAttachments(state: ReturnType<GuildStateStore["get"]>): Promise<DashboardAttachment[]> {
+    if (state.trackedOrder.length === 0) {
+      return [];
+    }
+
+    const cards = state.trackedOrder
+      .map((characterId) => {
+        const record = state.tracked.get(characterId);
+        const snapshot = state.lastSnapshots.get(characterId);
+        if (!record || !snapshot) {
+          return null;
+        }
+
+        return {
+          characterId,
+          displayName: record.displayName,
+          snapshot,
+          stale: record.stale,
+        };
+      })
+      .filter(
+        (
+          card,
+        ): card is {
+          characterId: string;
+          displayName: string;
+          snapshot: CharacterSnapshot;
+          stale: boolean;
+        } => Boolean(card),
+      );
+
+    if (cards.length === 0) {
+      return [];
+    }
+
+    return [await renderCompositeDashboard(cards)];
   }
 
   private buildDashboardBody(state: ReturnType<GuildStateStore["get"]>): string {

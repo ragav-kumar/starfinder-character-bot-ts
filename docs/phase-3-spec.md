@@ -109,6 +109,7 @@ Rules:
 - when one or more characters are tracked, the post should contain one composite dashboard image attachment
 - when zero characters are tracked, the post contains no dashboard image attachment
 - the composite image represents the full tracked roster rather than one attachment per character
+- the composite image attachment should use a stable dashboard-oriented filename rather than per-character filenames
 - routine updates replace the composite image as a synchronized dashboard update so metadata and visible dashboard content stay in sync
 
 ## 4.4 Recovery and conflict handling
@@ -191,7 +192,8 @@ Discord receives a single composite dashboard image built from the ordered chara
 
 Rules:
 - cards are arranged left-to-right in `trackedCharacterIds` order
-- once the layout reaches its fixed width or column limit, cards wrap to the next row
+- the composite uses a fixed 3-column layout
+- once the layout reaches 3 cards in a row, additional cards wrap to the next row
 - the layout must not become an unbounded single horizontal strip
 - tracked order remains stable between updates unless the tracked roster itself changes
 

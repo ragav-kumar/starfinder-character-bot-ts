@@ -3,12 +3,12 @@ import type { Mock } from "vitest";
 
 vi.mock("../src/rendering.js", () => ({
   diffSnapshots: vi.fn(() => []),
-  renderCharacterCard: vi.fn(async (characterId: string): Promise<DashboardAttachment> => ({
+  renderCompositeDashboard: vi.fn(async (cards: Array<{ characterId: string }>): Promise<DashboardAttachment> => ({
     kind: "rendered",
-    characterId,
-    filename: `character-${characterId}.png`,
+    characterId: "dashboard",
+    filename: "starfinder-dashboard.png",
     contentType: "image/png",
-    data: Buffer.from(`rendered-${characterId}`),
+    data: Buffer.from(`rendered-${cards.map((card) => card.characterId).join(",")}`),
   })),
 }));
 
@@ -151,7 +151,8 @@ describe("CharacterBotService", () => {
     const state = stateStore.get("1");
     expect(state.trackedOrder).toEqual(["110", "245"]);
     expect(dashboardStore.created).toHaveLength(1);
-    expect(dashboardStore.created[0]?.attachments).toHaveLength(2);
+    expect(dashboardStore.created[0]?.attachments).toHaveLength(1);
+    expect(dashboardStore.created[0]?.attachments[0]?.filename).toBe("starfinder-dashboard.png");
     expect(target.acks.at(-1)?.content).toContain("Added:");
   });
 
@@ -181,6 +182,7 @@ describe("CharacterBotService", () => {
 
     expect(stateStore.get("1").trackedOrder).toEqual(["245"]);
     expect(dashboardStore.edited.at(-1)?.attachments).toHaveLength(1);
+    expect(dashboardStore.edited.at(-1)?.attachments[0]?.filename).toBe("starfinder-dashboard.png");
     expect(target.acks.at(-1)?.content).toContain("Removed:");
   });
 
@@ -212,8 +214,7 @@ describe("CharacterBotService", () => {
           updatedAt: new Date("2026-04-17T18:00:00Z"),
         })}\n\nTracked characters: recovered`,
         attachments: [
-          { kind: "existing", id: "a1", filename: "character-110.png", characterId: "110" },
-          { kind: "existing", id: "a2", filename: "character-245.png", characterId: "245" },
+          { kind: "existing", id: "a1", filename: "starfinder-dashboard.png" },
         ],
         createdAt: new Date("2026-04-17T18:00:00Z"),
       },
@@ -232,7 +233,7 @@ describe("CharacterBotService", () => {
     expect(target.acks.at(-1)?.content).toContain("245");
   });
 
-  test("refresh updates dashboard attachments in tracked order and uses a temporary ack", async () => {
+  test("refresh updates one composite dashboard attachment and uses a temporary ack", async () => {
     const target = new FakeTarget("1", "200");
     await service.addCharacters(target, "110");
 
@@ -250,10 +251,11 @@ describe("CharacterBotService", () => {
     await service.refreshCharacters(target);
 
     expect(dashboardStore.edited.at(-1)?.attachments[0]?.kind).toBe("rendered");
+    expect(dashboardStore.edited.at(-1)?.attachments).toHaveLength(1);
     expect(target.acks.at(-1)).toEqual(expect.objectContaining({ temporary: true }));
   });
 
-  test("refresh marks a character stale after failed fetch and preserves its attachment slot", async () => {
+  test("refresh marks a character stale after failed fetch and preserves the composite attachment", async () => {
     const target = new FakeTarget("1", "200");
     await service.addCharacters(target, "110");
 
@@ -372,7 +374,7 @@ describe("CharacterBotService", () => {
           trackedCharacterIds: ["110"],
           updatedAt: new Date("2026-04-17T18:00:00Z"),
         }),
-        attachments: [{ kind: "existing", id: "x1", filename: "character-110.png", characterId: "110" }],
+        attachments: [{ kind: "existing", id: "x1", filename: "starfinder-dashboard.png" }],
         createdAt: new Date("2026-04-17T18:00:00Z"),
       },
       {
@@ -383,7 +385,7 @@ describe("CharacterBotService", () => {
           trackedCharacterIds: ["245"],
           updatedAt: new Date("2026-04-17T19:00:00Z"),
         }),
-        attachments: [{ kind: "existing", id: "x2", filename: "character-245.png", characterId: "245" }],
+        attachments: [{ kind: "existing", id: "x2", filename: "starfinder-dashboard.png" }],
         createdAt: new Date("2026-04-17T19:00:00Z"),
       },
     ]);
@@ -399,5 +401,34 @@ describe("CharacterBotService", () => {
 
     expect(target.acks.at(-1)?.content).toContain("245");
     expect(target.acks.at(-1)?.content).not.toContain("110");
+  });
+
+  test("recovery ignores attachment contents and trusts metadata tracked ids", async () => {
+    dashboardStore.seed("200", [
+      {
+        id: "existing",
+        channelId: "200",
+        content: formatDashboardMetadata({
+          guildId: "1",
+          trackedCharacterIds: ["110", "245"],
+          updatedAt: new Date("2026-04-17T18:00:00Z"),
+        }),
+        attachments: [{ kind: "existing", id: "a1", filename: "some-other-image.png", characterId: "999" }],
+        createdAt: new Date("2026-04-17T18:00:00Z"),
+      },
+    ]);
+    const restartedService = new CharacterBotService({
+      config,
+      dashboardStore,
+      stateStore: new GuildStateStore(),
+      fetchPage,
+    });
+    const target = new FakeTarget("1", "200");
+
+    await restartedService.listCharacters(target);
+
+    expect(target.acks.at(-1)?.content).toContain("110");
+    expect(target.acks.at(-1)?.content).toContain("245");
+    expect(target.acks.at(-1)?.content).not.toContain("999");
   });
 });

@@ -22,6 +22,8 @@ Dashboard model:
 - each guild has one authoritative dashboard post
 - the message body starts with a bot-readable metadata block
 - the dashboard post contains one composite dashboard image when one or more characters are tracked
+- the composite dashboard image uses a stable dashboard-oriented filename
+- cards are laid out left-to-right in stable tracked order with a fixed 3-column wrap
 - routine updates edit the same dashboard post in place
 
 If no characters are tracked, the dashboard post remains in place with empty tracked metadata and no dashboard image attachment.

@@ -127,7 +127,6 @@ export interface TrackedCharacter {
   displayName: string;
   stale: boolean;
   lastRefreshError: string | null;
-  dashboardAttachment: DashboardAttachment | null;
 }
 
 export interface GuildState {
