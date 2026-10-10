@@ -3,7 +3,7 @@
 **Status:** Sketch — not actionable  
 **Date:** 2026-10-10  
 **Source of truth:** Not yet. Until accepted, `docs/phase-3-spec.md` remains the governing spec.  
-**Change control:** Do not revise this specification unless a human explicitly requests a spec update.
+**Change control:** While this spec is a Sketch, it may be edited freely. Once accepted, do not revise it unless a human explicitly requests a spec update.
 
 > **Gate:** This is a scope sketch only. It must be fleshed out into a full phase spec and explicitly accepted by the repository owner before any implementation, planning of code changes, or code modification is based on it. Agents must not act on this document while its status is **Sketch**.
 

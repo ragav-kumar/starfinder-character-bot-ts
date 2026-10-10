@@ -8,12 +8,13 @@ The repository rules in `AGENTS.md` (imported above) apply to you in full. This 
 
 - Product behavior is defined by the numbered phase specs in `docs/`. `docs/prototype-spec.md` is Phase 1; later files are `docs/phase-N-spec.md`.
 - A higher-numbered **accepted** phase spec overrides lower-numbered specs where they conflict. Read the latest accepted spec first, then earlier ones for anything it does not restate.
-- Do not edit any spec unless the user explicitly asks for a spec change.
+- Do not edit an accepted or historical spec unless the user explicitly asks for a spec change. Sketch specs are the exception (see below).
 - `docs/command-reference.md` is the human-facing command reference. It does not override the specs. Whenever commands or user-visible command behavior change, update it and the governing spec in the same change.
 
-## Sketch Specs Are Not Actionable
+## Sketch Specs
 
 - A spec whose status line says **Sketch** is a placeholder for scope and goals only.
+- Sketches may be edited freely (fleshed out, rescoped, reworded) while they remain Sketches. The usual spec change-control rule applies only once a spec has been accepted.
 - Do not implement, plan code changes against, or modify code because of a Sketch spec.
 - A Sketch becomes actionable only after the user has fleshed it out (with your help, if asked) and explicitly accepted it, and its status line has been changed to show that acceptance.
 - If asked to work on something covered only by a Sketch, say so and offer to help flesh the spec out instead.
